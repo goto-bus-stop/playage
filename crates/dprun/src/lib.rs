@@ -1,9 +1,16 @@
-use std::io::Result;
-use std::process::{Child, Command};
+mod server;
+
+use std::process::Command;
+use std::path::PathBuf;
+use std::io::{Error as IOError, ErrorKind as IOErrorKind};
+use tokio::io::Result;
+use tokio::prelude::*;
+use tokio_process::{Child, CommandExt};
+use crate::server::HostServer;
 
 /// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
 #[derive(Clone, Copy)]
-pub struct GUID(u32, u16, u16, u8, u8, u8, u8, u8, u8, u8, u8);
+pub struct GUID(pub u32, pub u16, pub u16, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8);
 
 impl std::fmt::Display for GUID {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
@@ -46,6 +53,7 @@ pub struct DPRunOptionsBuilder {
     address: Vec<DPAddressPart>,
     session_name: Option<String>,
     session_password: Option<String>,
+    cwd: Option<PathBuf>,
 }
 
 pub struct DPRunOptions {
@@ -56,6 +64,7 @@ pub struct DPRunOptions {
     address: Vec<DPAddressPart>,
     session_name: Option<String>,
     session_password: Option<String>,
+    cwd: Option<PathBuf>,
 }
 
 impl DPRunOptions {
@@ -102,6 +111,11 @@ impl DPRunOptionsBuilder {
         Self { session_password: Some(session_password), ..self }
     }
 
+    /// Set the directory dprun is in (optional, defaults to current working directory).
+    pub fn cwd(self, cwd: PathBuf) -> Self {
+        Self { cwd: Some(cwd), ..self }
+    }
+
     /// Add an address part.
     pub fn address_part(mut self, part: DPAddressPart) -> Self {
         self.address.push(part);
@@ -123,6 +137,7 @@ impl DPRunOptionsBuilder {
             address: self.address,
             session_name: self.session_name,
             session_password: self.session_password,
+            cwd: self.cwd,
         }
     }
 }
@@ -140,9 +155,20 @@ impl DPRun {
     }
 
     /// Start dprun.
-    pub fn start(&mut self) -> Result<()> {
-        self.process = Some(self.command.spawn()?);
-        Ok(())
+    pub fn start(mut self) -> Result<impl Future<Item = (), Error = IOError>> {
+        let server = HostServer::new(2197);
+        let (server, token) = server.start()?;
+        let child = self.command.spawn_async()?.and_then(|result| {
+            if result.success() {
+                return future::finished(());
+            }
+            future::err(IOError::new(IOErrorKind::Other, format!("dprun exited with status {}", result.code().unwrap_or(0))))
+        }).then(move |result| {
+            println!("waiting for host server to shut down...");
+            token.stop();
+            result
+        });
+        Ok(child.join(server).map(|_| ()))
     }
 }
 
@@ -154,6 +180,10 @@ pub fn run(options: DPRunOptions) -> DPRun {
         wine.arg("dprun.exe");
         wine
     };
+
+    if let Some(cwd) = options.cwd {
+        command.current_dir(cwd);
+    }
 
     match options.session_type {
         SessionType::Host(Some(guid)) => {
