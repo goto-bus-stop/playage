@@ -1,4 +1,6 @@
+use std::time::{Duration, Instant};
 use tokio::prelude::*;
+use tokio::timer::Delay;
 use dprun::{run, DPAddressValue, DPRunOptions, GUID};
 
 /// Test app that sets up a DPChat session.
@@ -30,8 +32,12 @@ fn main() {
     let join = run(join_options);
 
     println!("Spawning dprun");
+    println!("host CLI: {}", host.command());
+    println!("join CLI: {}", join.command());
+
     let host_instance = host.start();
-    let join_instance = join.start();
+    let join_instance = Delay::new(Instant::now() + Duration::from_secs(3))
+        .then(|_| join.start());
 
     let future = host_instance.join(join_instance)
         .map(|_| ())
