@@ -1,4 +1,5 @@
 mod server;
+mod structs;
 
 use std::process::Command;
 use std::path::PathBuf;
@@ -6,7 +7,8 @@ use std::io::{Error as IOError, ErrorKind as IOErrorKind};
 use tokio::io::Result;
 use tokio::prelude::*;
 use tokio_process::{Child, CommandExt};
-use crate::server::HostServer;
+use crate::server::{HostServer, ServiceProvider};
+use crate::structs::*;
 
 /// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
 #[derive(Clone, Copy)]
@@ -142,10 +144,22 @@ impl DPRunOptionsBuilder {
     }
 }
 
+struct DPRunSP;
+impl ServiceProvider for DPRunSP {
+    fn open(&mut self, data: OpenData) {
+        println!("Got Open message: {:?}", data);
+    }
+
+    fn create_player(&mut self, data: CreatePlayerData) {
+        println!("Got CreatePlayer message: {:?}", data);
+    }
+}
+
 /// Represents a dprun game session.
 pub struct DPRun {
     command: Command,
     process: Option<Child>,
+    sp: Option<DPRunSP>,
 }
 
 impl DPRun {
@@ -157,7 +171,7 @@ impl DPRun {
     /// Start dprun.
     pub fn start(mut self) -> Result<impl Future<Item = (), Error = IOError>> {
         let server = HostServer::new(2197);
-        let (server, token) = server.start()?;
+        let (server, mut controller) = server.start()?;
         let child = self.command.spawn_async()?.and_then(|result| {
             if result.success() {
                 return future::finished(());
@@ -165,7 +179,7 @@ impl DPRun {
             future::err(IOError::new(IOErrorKind::Other, format!("dprun exited with status {}", result.code().unwrap_or(0))))
         }).then(move |result| {
             println!("waiting for host server to shut down...");
-            token.stop();
+            controller.stop();
             result
         });
         Ok(child.join(server).map(|_| ()))
@@ -225,6 +239,7 @@ pub fn run(options: DPRunOptions) -> DPRun {
     DPRun {
         command,
         process: None,
+        sp: Some(DPRunSP),
     }
 }
 
