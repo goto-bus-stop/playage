@@ -35,15 +35,25 @@ enum SessionType {
     Join(GUID),
 }
 
+enum DPAddressDataType {
+    GUID(GUID),
+    Named(String),
+}
+
+pub enum DPAddressValue {
+    /// A DirectPlay address part with a numeric value.
+    Number(i32),
+    /// A DirectPlay address part with a string value.
+    String(String),
+    /// A DirectPlay address part with a binary value.
+    Binary(Vec<u8>),
+}
+
 /// Represents a part of a DirectPlay address, akin to DPCOMPOUNDADDRESSELEMENT in the DirectPlay
 /// C API.
-pub enum DPAddressPart {
-    /// A DirectPlay address part with a numeric value.
-    Number(GUID, i32),
-    /// A DirectPlay address part with a string value.
-    String(GUID, String),
-    /// A DirectPlay address part with a binary value.
-    Binary(GUID, Vec<u8>),
+struct DPAddressPart {
+    data_type: DPAddressDataType,
+    value: DPAddressValue,
 }
 
 #[derive(Default)]
@@ -119,8 +129,20 @@ impl DPRunOptionsBuilder {
     }
 
     /// Add an address part.
-    pub fn address_part(mut self, part: DPAddressPart) -> Self {
-        self.address.push(part);
+    pub fn address_part(mut self, data_type: GUID, value: DPAddressValue) -> Self {
+        self.address.push(DPAddressPart {
+            data_type: DPAddressDataType::GUID(data_type),
+            value,
+        });
+        self
+    }
+
+    /// Add an address part.
+    pub fn named_address_part(mut self, data_type: &str, value: DPAddressValue) -> Self {
+        self.address.push(DPAddressPart {
+            data_type: DPAddressDataType::Named(data_type.to_string()),
+            value,
+        });
         self
     }
 
@@ -247,14 +269,17 @@ pub fn run(options: DPRunOptions) -> DPRun {
     };
 
     for part in options.address {
-        let value = match part {
-            DPAddressPart::Number(guid, val) => format!("{}=i:{}", &guid.to_string(), val),
-            DPAddressPart::String(guid, val) => format!("{}={}", &guid.to_string(), val),
-            DPAddressPart::Binary(guid, val) => format!("{}=b:{}",
-                &guid.to_string(),
+        let key = match part.data_type {
+            DPAddressDataType::GUID(guid) => guid.to_string(),
+            DPAddressDataType::Named(string) => string,
+        };
+        let value = match part.value {
+            DPAddressValue::Number(val) => format!("i:{}", val),
+            DPAddressValue::String(val) => val,
+            DPAddressValue::Binary(val) => format!("b:{}",
                 val.iter().map(|c| format!("{:02x}", c)).collect::<String>()),
         };
-        command.args(&["--address", &value]);
+        command.args(&["--address", &format!("{}={}", key, value)]);
     }
 
     if let Some(name) = options.session_name {
@@ -274,13 +299,12 @@ pub fn run(options: DPRunOptions) -> DPRun {
 
 #[cfg(test)]
 mod tests {
-    use crate::{run, DPAddressPart, DPRunOptions, GUID};
+    use crate::{run, DPAddressValue, DPRunOptions, GUID};
 
     #[test]
     fn build_command_line_args() {
         let dpchat = GUID(0x5BFDB060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
         let tcpip = GUID(0x36E95EE0, 0x8577, 0x11cf, 0x96, 0x0c, 0x00, 0x80, 0xc7, 0x53, 0x4e, 0x82);
-        let inet = GUID(0xc4a54da0, 0xe0af, 0x11cf, 0x9c, 0x4e, 0x00, 0xa0, 0xc9, 0x05, 0x42, 0x5e);
         let inet_port = GUID(0xe4524541, 0x8ea5, 0x11d1, 0x8a, 0x96, 0x00, 0x60, 0x97, 0xb0, 0x14, 0x11);
 
         let options = DPRunOptions::new()
@@ -288,15 +312,15 @@ mod tests {
             .player_name("Test".into())
             .application(dpchat)
             .service_provider(tcpip)
-            .address_part(DPAddressPart::String(inet, "127.0.0.1".into()))
-            .address_part(DPAddressPart::Number(inet_port, 2197))
+            .named_address_part("INet", DPAddressValue::String("127.0.0.1".into()))
+            .address_part(inet_port, DPAddressValue::Number(2197))
             .finish();
 
         let dp_run = run(options);
         if cfg!(target_os = "windows") {
-            assert_eq!(dp_run.command(), r#""dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11cf-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11d0-9C4F-00A0C905425E}" "--address" "{C4A54DA0-E0AF-11cf-9C4E-00A0C905425E}=127.0.0.1" "--address" "{E4524541-8EA5-11d1-8A96-006097B01411}=i:2197""#);
+            assert_eq!(dp_run.command(), r#""dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11cf-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11d0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11d1-8A96-006097B01411}=i:2197""#);
         } else {
-            assert_eq!(dp_run.command(), r#""wine" "dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11cf-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11d0-9C4F-00A0C905425E}" "--address" "{C4A54DA0-E0AF-11cf-9C4E-00A0C905425E}=127.0.0.1" "--address" "{E4524541-8EA5-11d1-8A96-006097B01411}=i:2197""#);
+            assert_eq!(dp_run.command(), r#""wine" "dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11cf-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11d0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11d1-8A96-006097B01411}=i:2197""#);
         }
     }
 }
