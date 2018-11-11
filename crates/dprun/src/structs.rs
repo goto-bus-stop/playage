@@ -180,7 +180,7 @@ struct GetMessageQueueData {
 struct CancelData {
   flags: i32,
   // LPRGLPVOID     lprglpvSPMsgID,
-  cSPMsgID: i32,
+  sp_message_id: i32,
   min_priority: i32,
   max_priority: i32,
 }

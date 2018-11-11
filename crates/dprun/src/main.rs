@@ -5,10 +5,10 @@ use dprun::{run, DPAddressValue, DPRunOptions, GUID};
 
 /// Test app that sets up a DPChat session.
 fn main() {
-    let dpchat = GUID(0x5BFDB060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
-    let test_session_id = GUID(0x5BFDB060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
+    let dpchat = GUID(0x5BFD_B060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
+    let test_session_id = GUID(0x5BFD_B060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
 
-    let host_options = DPRunOptions::new()
+    let host_options = DPRunOptions::builder()
         .host(Some(test_session_id))
         .player_name("Hosting".into())
         .application(dpchat)
@@ -18,7 +18,7 @@ fn main() {
         .cwd("/home/goto-bus-stop/Code/aocmulti/dprun/bin/debug".into())
         .finish();
 
-    let join_options = DPRunOptions::new()
+    let join_options = DPRunOptions::builder()
         .join(test_session_id)
         .player_name("Joining".into())
         .application(dpchat)

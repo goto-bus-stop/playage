@@ -1,5 +1,5 @@
 mod server;
-mod structs;
+pub mod structs;
 
 use std::process::Command;
 use std::path::PathBuf;
@@ -7,8 +7,10 @@ use std::io::{Error as IOError, ErrorKind as IOErrorKind};
 use tokio::io::Result;
 use tokio::prelude::*;
 use tokio_process::{Child, CommandExt};
-use crate::server::{HostServer, ServiceProvider};
+use crate::server::HostServer;
 use crate::structs::*;
+
+pub use crate::server::ServiceProvider;
 
 /// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -91,7 +93,7 @@ pub struct DPRunOptions {
 
 impl DPRunOptions {
     /// Create options for dprun.
-    pub fn new() -> DPRunOptionsBuilder {
+    pub fn builder() -> DPRunOptionsBuilder {
         DPRunOptionsBuilder::default()
     }
 }
@@ -203,7 +205,6 @@ impl ServiceProvider for DPRunSP {
 /// Represents a dprun game session.
 pub struct DPRun {
     command: Command,
-    process: Option<Child>,
     service_provider: Option<DPRunSP>,
 }
 
@@ -244,7 +245,7 @@ impl DPRun {
 
     /// Start dprun.
     pub fn start(self) -> impl Future<Item = (), Error = IOError> {
-        if let Some(_) = self.service_provider {
+        if self.service_provider.is_some() {
             future::Either::A(self.start_with_server())
         } else {
             future::Either::B(self.start_without_server())
@@ -310,7 +311,6 @@ pub fn run(options: DPRunOptions) -> DPRun {
 
     DPRun {
         command,
-        process: None,
         service_provider,
     }
 }
@@ -325,7 +325,7 @@ mod tests {
         let tcpip = GUID(0x36E95EE0, 0x8577, 0x11cf, 0x96, 0x0c, 0x00, 0x80, 0xc7, 0x53, 0x4e, 0x82);
         let inet_port = GUID(0xe4524541, 0x8ea5, 0x11d1, 0x8a, 0x96, 0x00, 0x60, 0x97, 0xb0, 0x14, 0x11);
 
-        let options = DPRunOptions::new()
+        let options = DPRunOptions::builder()
             .host(None)
             .player_name("Test".into())
             .application(dpchat)
