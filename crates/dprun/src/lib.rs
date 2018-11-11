@@ -35,9 +35,19 @@ enum SessionType {
     Join(GUID),
 }
 
-enum DPAddressDataType {
+#[derive(PartialEq, Eq)]
+enum DPGUIDOrNamed {
     GUID(GUID),
     Named(String),
+}
+
+impl DPGUIDOrNamed {
+    fn into_string(self) -> String {
+        match self {
+            DPGUIDOrNamed::GUID(guid) => guid.to_string(),
+            DPGUIDOrNamed::Named(string) => string,
+        }
+    }
 }
 
 pub enum DPAddressValue {
@@ -52,7 +62,7 @@ pub enum DPAddressValue {
 /// Represents a part of a DirectPlay address, akin to DPCOMPOUNDADDRESSELEMENT in the DirectPlay
 /// C API.
 struct DPAddressPart {
-    data_type: DPAddressDataType,
+    data_type: DPGUIDOrNamed,
     value: DPAddressValue,
 }
 
@@ -60,7 +70,7 @@ struct DPAddressPart {
 pub struct DPRunOptionsBuilder {
     session_type: Option<SessionType>,
     player_name: Option<String>,
-    service_provider: Option<GUID>,
+    service_provider: Option<DPGUIDOrNamed>,
     application: Option<GUID>,
     address: Vec<DPAddressPart>,
     session_name: Option<String>,
@@ -71,7 +81,7 @@ pub struct DPRunOptionsBuilder {
 pub struct DPRunOptions {
     session_type: SessionType,
     player_name: String,
-    service_provider: GUID,
+    service_provider: DPGUIDOrNamed,
     application: GUID,
     address: Vec<DPAddressPart>,
     session_name: Option<String>,
@@ -105,7 +115,18 @@ impl DPRunOptionsBuilder {
 
     /// Set the service provider to use.
     pub fn service_provider(self, service_provider: GUID) -> Self {
-        Self { service_provider: Some(service_provider), ..self }
+        Self {
+            service_provider: Some(DPGUIDOrNamed::GUID(service_provider)),
+            ..self
+        }
+    }
+
+    /// Set the service provider to use, by name.
+    pub fn named_service_provider(self, service_provider: &str) -> Self {
+        Self {
+            service_provider: Some(DPGUIDOrNamed::Named(service_provider.to_string())),
+            ..self
+        }
     }
 
     /// Set the application to start.
@@ -131,7 +152,7 @@ impl DPRunOptionsBuilder {
     /// Add an address part.
     pub fn address_part(mut self, data_type: GUID, value: DPAddressValue) -> Self {
         self.address.push(DPAddressPart {
-            data_type: DPAddressDataType::GUID(data_type),
+            data_type: DPGUIDOrNamed::GUID(data_type),
             value,
         });
         self
@@ -140,7 +161,7 @@ impl DPRunOptionsBuilder {
     /// Add an address part.
     pub fn named_address_part(mut self, data_type: &str, value: DPAddressValue) -> Self {
         self.address.push(DPAddressPart {
-            data_type: DPAddressDataType::Named(data_type.to_string()),
+            data_type: DPGUIDOrNamed::Named(data_type.to_string()),
             value,
         });
         self
@@ -256,23 +277,20 @@ pub fn run(options: DPRunOptions) -> DPRun {
         },
     };
 
-    command.args(&[
-        "--player", &options.player_name,
-        "--service-provider", &options.service_provider.to_string(),
-        "--application", &options.application.to_string(),
-    ]);
-
-    let service_provider = if options.service_provider == GUID_DPRUNSP {
+    let service_provider = if options.service_provider == DPGUIDOrNamed::GUID(GUID_DPRUNSP) || options.service_provider == DPGUIDOrNamed::Named("DPRUN".to_string()) {
         Some(DPRunSP)
     } else {
         None
     };
 
+    command.args(&[
+        "--player", &options.player_name,
+        "--service-provider", &options.service_provider.into_string(),
+        "--application", &options.application.to_string(),
+    ]);
+
     for part in options.address {
-        let key = match part.data_type {
-            DPAddressDataType::GUID(guid) => guid.to_string(),
-            DPAddressDataType::Named(string) => string,
-        };
+        let key = part.data_type.into_string();
         let value = match part.value {
             DPAddressValue::Number(val) => format!("i:{}", val),
             DPAddressValue::String(val) => val,
