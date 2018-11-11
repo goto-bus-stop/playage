@@ -11,7 +11,7 @@ use crate::server::{HostServer, ServiceProvider};
 use crate::structs::*;
 
 /// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub struct GUID(pub u32, pub u16, pub u16, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8);
 
 impl std::fmt::Display for GUID {
@@ -144,6 +144,8 @@ impl DPRunOptionsBuilder {
     }
 }
 
+const GUID_DPRUNSP: GUID = GUID(0xb1ed2367, 0x609b, 0x4c5c, 0x87, 0x55, 0xd2, 0xa2, 0x9b, 0xb9, 0xa5, 0x54);
+
 struct DPRunSP;
 impl ServiceProvider for DPRunSP {
     fn open(&mut self, data: OpenData) {
@@ -159,7 +161,7 @@ impl ServiceProvider for DPRunSP {
 pub struct DPRun {
     command: Command,
     process: Option<Child>,
-    sp: Option<DPRunSP>,
+    service_provider: Option<DPRunSP>,
 }
 
 impl DPRun {
@@ -168,21 +170,42 @@ impl DPRun {
         format!("{:?}", self.command)
     }
 
-    /// Start dprun.
-    pub fn start(mut self) -> Result<impl Future<Item = (), Error = IOError>> {
+    fn start_without_server(mut self) -> impl Future<Item = (), Error = IOError> {
+        future::result(self.command.spawn_async())
+            .flatten()
+            .and_then(|result| {
+                if result.success() {
+                    return future::finished(());
+                }
+                future::err(IOError::new(IOErrorKind::Other, format!("dprun exited with status {}", result.code().unwrap_or(0))))
+            })
+    }
+
+    fn start_with_server(mut self) -> impl Future<Item = (), Error = IOError> {
         let server = HostServer::new(2197);
-        let (server, mut controller) = server.start()?;
-        let child = self.command.spawn_async()?.and_then(|result| {
-            if result.success() {
-                return future::finished(());
-            }
-            future::err(IOError::new(IOErrorKind::Other, format!("dprun exited with status {}", result.code().unwrap_or(0))))
-        }).then(move |result| {
-            println!("waiting for host server to shut down...");
-            controller.stop();
-            result
-        });
-        Ok(child.join(server).map(|_| ()))
+        let server = future::result(server.start());
+        let child = future::result(self.command.spawn_async());
+        server.join(child).and_then(|((server, mut controller), child)| {
+            child.and_then(|result| {
+                if result.success() {
+                    return future::finished(());
+                }
+                future::err(IOError::new(IOErrorKind::Other, format!("dprun exited with status {}", result.code().unwrap_or(0))))
+            }).then(move |result| {
+                println!("waiting for host server to shut down...");
+                controller.stop();
+                result
+            }).and_then(|_| server)
+        })
+    }
+
+    /// Start dprun.
+    pub fn start(self) -> impl Future<Item = (), Error = IOError> {
+        if let Some(_) = self.service_provider {
+            future::Either::A(self.start_with_server())
+        } else {
+            future::Either::B(self.start_without_server())
+        }
     }
 }
 
@@ -217,6 +240,12 @@ pub fn run(options: DPRunOptions) -> DPRun {
         "--application", &options.application.to_string(),
     ]);
 
+    let service_provider = if options.service_provider == GUID_DPRUNSP {
+        Some(DPRunSP)
+    } else {
+        None
+    };
+
     for part in options.address {
         let value = match part {
             DPAddressPart::Number(guid, val) => format!("{}=i:{}", &guid.to_string(), val),
@@ -239,7 +268,7 @@ pub fn run(options: DPRunOptions) -> DPRun {
     DPRun {
         command,
         process: None,
-        sp: Some(DPRunSP),
+        service_provider,
     }
 }
 

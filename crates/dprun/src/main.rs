@@ -21,8 +21,8 @@ fn main() -> Result<(), std::io::Error> {
     let dp_run = run(options);
 
     println!("Spawning dprun");
-    let server = dp_run.start()?;
-    tokio::run(server.map_err(|e| eprintln!("error: {:?}", e)));
+    let instance = dp_run.start();
+    tokio::run(instance.map_err(|e| eprintln!("error: {:?}", e)));
     println!("done");
     Ok(())
 
