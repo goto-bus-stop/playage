@@ -12,9 +12,9 @@ fn main() {
         .host(Some(test_session_id))
         .player_name("Hosting".into())
         .application(dpchat)
-        .named_service_provider("TCPIP")
+        .named_service_provider("DPRUN")
         .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
-        // .named_address_part("INetPort", DPAddressValue::Number(2197))
+        .named_address_part("INetPort", DPAddressValue::Number(2197))
         .cwd("/home/goto-bus-stop/Code/aocmulti/dprun/bin/debug".into())
         .finish();
 
@@ -22,9 +22,9 @@ fn main() {
         .join(test_session_id)
         .player_name("Joining".into())
         .application(dpchat)
-        .named_service_provider("TCPIP")
+        .named_service_provider("DPRUN")
         .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
-        // .named_address_part("INetPort", DPAddressValue::Number(2197))
+        .named_address_part("INetPort", DPAddressValue::Number(2198))
         .cwd("/home/goto-bus-stop/Code/aocmulti/dprun/bin/debug".into())
         .finish();
 

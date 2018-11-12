@@ -4,9 +4,8 @@ pub mod structs;
 use std::process::Command;
 use std::path::PathBuf;
 use std::io::{Error as IOError, ErrorKind as IOErrorKind};
-use tokio::io::Result;
 use tokio::prelude::*;
-use tokio_process::{Child, CommandExt};
+use tokio_process::CommandExt; // spawn_async
 use crate::server::HostServer;
 use crate::structs::*;
 
@@ -190,6 +189,7 @@ impl DPRunOptionsBuilder {
 }
 
 const GUID_DPRUNSP: GUID = GUID(0xb1ed2367, 0x609b, 0x4c5c, 0x87, 0x55, 0xd2, 0xa2, 0x9b, 0xb9, 0xa5, 0x54);
+const GUID_INETPORT: GUID = GUID(0xe4524541, 0x8ea5, 0x11d1, 0x8a, 0x96, 0x00, 0x60, 0x97, 0xb0, 0x14, 0x11);
 
 struct DPRunSP;
 impl ServiceProvider for DPRunSP {
@@ -205,6 +205,7 @@ impl ServiceProvider for DPRunSP {
 /// Represents a dprun game session.
 pub struct DPRun {
     command: Command,
+    host_server_port: Option<u16>,
     service_provider: Option<DPRunSP>,
 }
 
@@ -226,20 +227,20 @@ impl DPRun {
     }
 
     fn start_with_server(mut self) -> impl Future<Item = (), Error = IOError> {
-        let server = HostServer::new(2197);
-        let server = future::result(server.start());
-        let child = future::result(self.command.spawn_async());
-        server.join(child).and_then(|((server, mut controller), child)| {
+        let server = HostServer::new(self.host_server_port.unwrap_or(2197));
+        let server_result = future::result(server.start());
+        let child_result = future::result(self.command.spawn_async());
+        server_result.join(child_result).and_then(|((server, mut controller), child)| {
             child.and_then(|result| {
                 if result.success() {
                     return future::finished(());
                 }
                 future::err(IOError::new(IOErrorKind::Other, format!("dprun exited with status {}", result.code().unwrap_or(0))))
             }).then(move |result| {
-                println!("waiting for host server to shut down...");
+                println!("[DPRun::start_with_server] waiting for host server to shut down...");
                 controller.stop();
                 result
-            }).and_then(|_| server)
+            }).join(server).map(|_| ())
         })
     }
 
@@ -278,8 +279,24 @@ pub fn run(options: DPRunOptions) -> DPRun {
         },
     };
 
-    let service_provider = if options.service_provider == DPGUIDOrNamed::GUID(GUID_DPRUNSP) || options.service_provider == DPGUIDOrNamed::Named("DPRUN".to_string()) {
+    let use_dprun_sp = options.service_provider == DPGUIDOrNamed::GUID(GUID_DPRUNSP)
+        || options.service_provider == DPGUIDOrNamed::Named("DPRUN".to_string());
+
+    let service_provider = if use_dprun_sp {
         Some(DPRunSP)
+    } else {
+        None
+    };
+
+    let host_server_port = if use_dprun_sp {
+        options.address.iter().find(|part| {
+            part.data_type == DPGUIDOrNamed::GUID(GUID_INETPORT)
+                || part.data_type == DPGUIDOrNamed::Named("INetPort".to_string())
+        }).and_then(|part| if let DPAddressValue::Number(val) = part.value {
+            Some(val as u16)
+        } else {
+            None
+        })
     } else {
         None
     };
@@ -311,6 +328,7 @@ pub fn run(options: DPRunOptions) -> DPRun {
 
     DPRun {
         command,
+        host_server_port,
         service_provider,
     }
 }

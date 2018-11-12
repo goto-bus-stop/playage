@@ -49,8 +49,8 @@ struct CreateGroupData {
 #[derive(Debug)]
 #[repr(C)]
 pub struct CreatePlayerData {
-  player_id: DPID,
-  flags: i32,
+  pub player_id: DPID,
+  pub flags: i32,
 }
 
 #[derive(Debug)]
@@ -69,9 +69,8 @@ struct DeletePlayerData {
 
 #[derive(Debug)]
 #[repr(C)]
-struct EnumSessionsData {
-  message: Vec<u8>,
-  return_status: bool,
+pub struct EnumSessionsData {
+  pub message: Vec<u8>,
 }
 
 #[repr(C)]
@@ -98,10 +97,10 @@ struct GetCapsData {
 #[derive(Debug)]
 #[repr(C)]
 pub struct OpenData {
-  create: bool,
-  return_status: bool,
-  open_flags: i32,
-  session_flags: i32,
+  pub create: bool,
+  pub return_status: bool,
+  pub open_flags: i32,
+  pub session_flags: i32,
 }
 
 #[derive(Debug)]
