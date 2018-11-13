@@ -188,5 +188,3 @@ struct CancelData {
 #[repr(C)]
 struct ShutdownData {
 }
-
-

@@ -9,7 +9,7 @@ use tokio_process::CommandExt; // spawn_async
 use crate::server::HostServer;
 use crate::structs::*;
 
-pub use crate::server::ServiceProvider;
+pub use crate::server::{AppController, ServiceProvider};
 
 /// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
 #[derive(Clone, Copy, PartialEq, Eq)]
@@ -72,6 +72,7 @@ pub struct DPRunOptionsBuilder {
     session_type: Option<SessionType>,
     player_name: Option<String>,
     service_provider: Option<DPGUIDOrNamed>,
+    service_provider_handler: Option<Box<ServiceProvider>>,
     application: Option<GUID>,
     address: Vec<DPAddressPart>,
     session_name: Option<String>,
@@ -83,6 +84,7 @@ pub struct DPRunOptions {
     session_type: SessionType,
     player_name: String,
     service_provider: DPGUIDOrNamed,
+    service_provider_handler: Option<Box<ServiceProvider>>,
     application: GUID,
     address: Vec<DPAddressPart>,
     session_name: Option<String>,
@@ -130,6 +132,14 @@ impl DPRunOptionsBuilder {
         }
     }
 
+    pub fn service_provider_handler(mut self, service_provider: Box<ServiceProvider>) -> Self {
+        if self.service_provider.is_none() {
+            self = self.named_service_provider("DPRUN");
+        }
+        self.service_provider_handler = Some(service_provider);
+        self
+    }
+
     /// Set the application to start.
     pub fn application(self, application: GUID) -> Self {
         Self { application: Some(application), ..self }
@@ -175,10 +185,15 @@ impl DPRunOptionsBuilder {
         assert!(self.service_provider.is_some());
         assert!(self.application.is_some());
 
+        if self.service_provider == Some(DPGUIDOrNamed::GUID(GUID_DPRUNSP)) || self.service_provider == Some(DPGUIDOrNamed::Named("DPRUN".to_string())) {
+            assert!(self.service_provider_handler.is_some(), "Must register a service provider handler to use the DPRun service provider.");
+        }
+
         DPRunOptions {
             session_type: self.session_type.unwrap(),
             player_name: self.player_name.unwrap(),
             service_provider: self.service_provider.unwrap(),
+            service_provider_handler: self.service_provider_handler,
             application: self.application.unwrap(),
             address: self.address,
             session_name: self.session_name,
@@ -191,22 +206,11 @@ impl DPRunOptionsBuilder {
 const GUID_DPRUNSP: GUID = GUID(0xb1ed2367, 0x609b, 0x4c5c, 0x87, 0x55, 0xd2, 0xa2, 0x9b, 0xb9, 0xa5, 0x54);
 const GUID_INETPORT: GUID = GUID(0xe4524541, 0x8ea5, 0x11d1, 0x8a, 0x96, 0x00, 0x60, 0x97, 0xb0, 0x14, 0x11);
 
-struct DPRunSP;
-impl ServiceProvider for DPRunSP {
-    fn open(&mut self, data: OpenData) {
-        println!("Got Open message: {:?}", data);
-    }
-
-    fn create_player(&mut self, data: CreatePlayerData) {
-        println!("Got CreatePlayer message: {:?}", data);
-    }
-}
-
 /// Represents a dprun game session.
 pub struct DPRun {
     command: Command,
     host_server_port: Option<u16>,
-    service_provider: Option<DPRunSP>,
+    service_provider: Option<Box<ServiceProvider>>,
 }
 
 impl DPRun {
@@ -227,7 +231,7 @@ impl DPRun {
     }
 
     fn start_with_server(mut self) -> impl Future<Item = (), Error = IOError> {
-        let server = HostServer::new(self.host_server_port.unwrap_or(2197));
+        let server = HostServer::new(self.host_server_port.unwrap_or(2197), self.service_provider.unwrap());
         let server_result = future::result(server.start());
         let child_result = future::result(self.command.spawn_async());
         server_result.join(child_result).and_then(|((server, mut controller), child)| {
@@ -279,23 +283,16 @@ pub fn run(options: DPRunOptions) -> DPRun {
         },
     };
 
-    let use_dprun_sp = options.service_provider == DPGUIDOrNamed::GUID(GUID_DPRUNSP)
-        || options.service_provider == DPGUIDOrNamed::Named("DPRUN".to_string());
+    let service_provider = options.service_provider_handler;
 
-    let service_provider = if use_dprun_sp {
-        Some(DPRunSP)
-    } else {
-        None
-    };
-
-    let host_server_port = if use_dprun_sp {
+    let host_server_port = if service_provider.is_some() {
         options.address.iter().find(|part| {
             part.data_type == DPGUIDOrNamed::GUID(GUID_INETPORT)
                 || part.data_type == DPGUIDOrNamed::Named("INetPort".to_string())
         }).and_then(|part| if let DPAddressValue::Number(val) = part.value {
             Some(val as u16)
         } else {
-            None
+            Some(2197)
         })
     } else {
         None
