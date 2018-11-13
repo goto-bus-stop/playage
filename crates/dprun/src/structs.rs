@@ -1,3 +1,6 @@
+use bytes::Buf;
+use std::io::Cursor;
+
 pub type DPID = i32;
 
 #[derive(Debug)]
@@ -111,11 +114,27 @@ struct RemovePlayerFromGroupData {
 }
 
 #[derive(Debug)]
-#[repr(C)]
-struct ReplyData {
-  message_header: Vec<u8>,
-  message: Vec<u8>,
-  name_server_id: DPID,
+pub struct ReplyData {
+    pub reply_to_id: DPID,
+    pub name_server_id: DPID,
+    pub message: Vec<u8>,
+}
+
+impl ReplyData {
+    pub fn parse(bytes: &[u8]) -> Self {
+        let mut read = Cursor::new(bytes);
+        let reply_to_id = read.get_i32_le();
+        let name_server_id = read.get_i32_le();
+        let message_size = read.get_u32_le();
+        let mut message = vec![0; message_size as usize];
+        read.copy_to_slice(&mut message);
+
+        Self {
+            reply_to_id,
+            name_server_id,
+            message: message,
+        }
+    }
 }
 
 #[derive(Debug)]

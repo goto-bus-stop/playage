@@ -11,32 +11,45 @@ use dprun::{
     DPAddressValue, DPRunOptions,
 };
 
+const DPLAYI_PLAYER_SYSPLAYER: i32 = 1;
+const DPLAYI_PLAYER_NAMESRVR: i32 = 2;
+const DPLAYI_PLAYER_LOCAL: i32 = 8;
+
 struct LocalOnlyServer {
-    host: Option<AppController>,
+    name_server: Option<AppController>,
     players: HashMap<DPID, AppController>,
+    enumers: HashMap<DPID, AppController>,
 }
 
 impl LocalOnlyServer {
     pub fn make() -> Arc<Mutex<Self>> {
         Arc::new(Mutex::new(Self {
-            host: None,
+            name_server: None,
             players: HashMap::new(),
+            enumers: HashMap::new(),
         }))
     }
 
-    pub fn create_player(&mut self, id: DPID, controller: AppController) {
-        if self.host.is_none() {
-            self.host = Some(controller);
-        } else {
-            self.players.insert(id, controller);
-        }
+    pub fn set_name_server(&mut self, _id: DPID, controller: AppController) {
+        self.name_server = Some(controller);
     }
 
-    pub fn enum_sessions(&mut self, message: &[u8]) {
-        match self.host {
-            Some(ref mut host) => host.send(message.to_vec()),
+    pub fn create_player(&mut self, id: DPID, controller: AppController) {
+        self.players.insert(id, controller);
+    }
+
+    pub fn enum_sessions(&mut self, message: &[u8], requester: AppController) {
+        self.enumers.insert(0, requester);
+        match self.name_server {
+            Some(ref mut name_server) => name_server.send(message.to_vec()),
             None => panic!("EnumSessions'd without a host"),
         };
+    }
+
+    fn reply(&mut self, id: DPID, data: &[u8]) {
+        self.enumers.values_mut().for_each(|player| {
+            player.send(data.to_vec());
+        });
     }
 }
 
@@ -51,10 +64,10 @@ impl LocalOnlySP {
 }
 
 impl ServiceProvider for LocalOnlySP {
-    fn enum_sessions(&mut self, _controller: AppController, _id: u32, data: EnumSessionsData) {
+    fn enum_sessions(&mut self, controller: AppController, _id: u32, data: EnumSessionsData) {
         println!("[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}", data);
         self.server.lock().unwrap()
-            .enum_sessions(&data.message)
+            .enum_sessions(&data.message, controller)
     }
 
     fn open(&mut self, _controller: AppController, _id: u32, data: OpenData) {
@@ -63,8 +76,19 @@ impl ServiceProvider for LocalOnlySP {
 
     fn create_player(&mut self, controller: AppController, _id: u32, data: CreatePlayerData) {
         println!("[LocalOnlySP::create_player] Got CreatePlayer message: {:?}", data);
+        if data.flags & DPLAYI_PLAYER_NAMESRVR != 0 {
+            self.server.lock().unwrap()
+                .set_name_server(data.player_id, controller)
+        } else {
+            self.server.lock().unwrap()
+                .create_player(data.player_id, controller)
+        }
+    }
+
+    fn reply(&mut self, controller: AppController, _id: u32, data: ReplyData) {
+        println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
         self.server.lock().unwrap()
-            .create_player(data.player_id, controller)
+            .reply(data.reply_to_id, &data.message)
     }
 }
 

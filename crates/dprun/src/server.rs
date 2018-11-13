@@ -25,6 +25,7 @@ pub trait ServiceProvider: Sync + Send {
     fn enum_sessions(&mut self, controller: AppController, id: u32, data: EnumSessionsData);
     fn open(&mut self, controller: AppController, id: u32, data: OpenData);
     fn create_player(&mut self, controller: AppController, id: u32, data: CreatePlayerData);
+    fn reply(&mut self, controller: AppController, id: u32, data: ReplyData);
 }
 
 #[derive(Clone)]
@@ -118,6 +119,11 @@ fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller
             service_provider.lock().unwrap()
                 .create_player(controller.clone(), id, create_player)
         },
+        b"repl" => {
+            let reply = ReplyData::parse(message);
+            service_provider.lock().unwrap()
+                .reply(controller.clone(), id, reply)
+        },
         method => {
             println!("[HostServer::process_message] HostServer message: {} {:?}, {:?}", id, method, message);
         }
@@ -133,6 +139,7 @@ fn handle_connection(service_provider: Arc<Mutex<Box<ServiceProvider>>>, sock: T
 
     let read_future = reader.for_each(move |mut message| {
         let id = BigEndian::read_u32(&message.split_to(4));
+        let _reply_id = BigEndian::read_u32(&message.split_to(4));
         let method = message.split_to(4);
         handle_message(Arc::clone(&service_provider), &mut app_controller, id, &method, &message)
     }).then(|result| {
@@ -147,9 +154,10 @@ fn handle_connection(service_provider: Arc<Mutex<Box<ServiceProvider>>>, sock: T
     }).map(|app_message| match app_message {
         AppMessage::Send(msg_id, reply_to_id, data) => {
             println!("[handle_connection] Send message {} in reply to {}", msg_id, reply_to_id);
-            let mut message = BytesMut::with_capacity(data.len() + 8);
+            let mut message = BytesMut::with_capacity(data.len() + 12);
             message.put_u32_be(msg_id);
             message.put_u32_be(reply_to_id);
+            message.put_u32_be(0);
             message.put(&data);
             message.freeze()
         },
