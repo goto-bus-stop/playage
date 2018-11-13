@@ -1,7 +1,35 @@
 use bytes::Buf;
+use std::mem;
+use std::fmt::{Formatter, Debug, Display, Result as FormatResult};
 use std::io::Cursor;
 
 pub type DPID = i32;
+
+/// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub struct GUID(pub u32, pub u16, pub u16, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8);
+
+impl Display for GUID {
+    fn fmt(&self, f: &mut Formatter) -> FormatResult {
+        write!(f, "{{{:08X?}-{:04X?}-{:04x?}-{:02X?}{:02X?}-{:02X?}{:02X?}{:02X?}{:02X?}{:02X?}{:02X?}}}",
+               self.0,
+               self.1,
+               self.2,
+               self.3, self.4,
+               self.5, self.6, self.7, self.8, self.9, self.10)
+    }
+}
+
+impl Debug for GUID {
+    fn fmt(&self, f: &mut Formatter) -> FormatResult {
+        write!(f, "GUID({:08X?}, {:04X?}, {:04x?}, {:02X?}{:02X?}, {:02X?}{:02X?}{:02X?}{:02X?}{:02X?}{:02X?})",
+               self.0,
+               self.1,
+               self.2,
+               self.3, self.4,
+               self.5, self.6, self.7, self.8, self.9, self.10)
+    }
+}
 
 #[derive(Debug)]
 #[repr(C)]
@@ -115,7 +143,7 @@ struct RemovePlayerFromGroupData {
 
 #[derive(Debug)]
 pub struct ReplyData {
-    pub reply_to_id: DPID,
+    pub reply_to: GUID,
     pub name_server_id: DPID,
     pub message: Vec<u8>,
 }
@@ -123,14 +151,18 @@ pub struct ReplyData {
 impl ReplyData {
     pub fn parse(bytes: &[u8]) -> Self {
         let mut read = Cursor::new(bytes);
-        let reply_to_id = read.get_i32_le();
+
+        let mut reply_to = [0; 16];
+        read.copy_to_slice(&mut reply_to);
+        let reply_to: GUID = unsafe { mem::transmute(reply_to) };
+
         let name_server_id = read.get_i32_le();
-        let message_size = read.get_u32_le();
+        let message_size = read.get_i32_le();
         let mut message = vec![0; message_size as usize];
         read.copy_to_slice(&mut message);
 
         Self {
-            reply_to_id,
+            reply_to,
             name_server_id,
             message: message,
         }

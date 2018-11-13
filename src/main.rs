@@ -3,6 +3,7 @@ use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use tokio::prelude::*;
 use tokio::timer::Delay;
+use rand::{thread_rng, Rng};
 use dprun::{
     run,
     structs::*,
@@ -46,7 +47,7 @@ impl LocalOnlyServer {
         };
     }
 
-    fn reply(&mut self, id: DPID, data: &[u8]) {
+    fn reply(&mut self, id: GUID, data: &[u8]) {
         self.enumers.values_mut().for_each(|player| {
             player.send(data.to_vec());
         });
@@ -88,7 +89,7 @@ impl ServiceProvider for LocalOnlySP {
     fn reply(&mut self, controller: AppController, _id: u32, data: ReplyData) {
         println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
         self.server.lock().unwrap()
-            .reply(data.reply_to_id, &data.message)
+            .reply(data.reply_to, &data.message)
     }
 }
 
@@ -99,6 +100,13 @@ fn main() {
 
     let local_server = LocalOnlyServer::make();
 
+    let mut host_guid = [0u8; 16];
+    let mut join_guid = [0u8; 16];
+    thread_rng().fill(&mut host_guid);
+    thread_rng().fill(&mut join_guid);
+    let host_guid = host_guid.to_vec();
+    let join_guid = join_guid.to_vec();
+
     let host_options = DPRunOptions::builder()
         .host(Some(test_session_id))
         .player_name("Hosting".into())
@@ -106,6 +114,7 @@ fn main() {
         .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
         .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
         .named_address_part("INetPort", DPAddressValue::Number(2197))
+        .named_address_part("SelfID", DPAddressValue::Binary(host_guid))
         .cwd("/home/goto-bus-stop/Code/aocmulti/dprun/bin/debug".into())
         .finish();
 
@@ -116,6 +125,7 @@ fn main() {
         .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
         .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
         .named_address_part("INetPort", DPAddressValue::Number(2198))
+        .named_address_part("SelfID", DPAddressValue::Binary(join_guid))
         .cwd("/home/goto-bus-stop/Code/aocmulti/dprun/bin/debug".into())
         .finish();
 

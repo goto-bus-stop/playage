@@ -10,22 +10,7 @@ use crate::server::HostServer;
 use crate::structs::*;
 
 pub use crate::server::{AppController, ServiceProvider};
-pub use crate::structs::DPID;
-
-/// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub struct GUID(pub u32, pub u16, pub u16, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8);
-
-impl std::fmt::Display for GUID {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "{{{:08X?}-{:04X?}-{:04x?}-{:02X?}{:02X?}-{:02X?}{:02X?}{:02X?}{:02X?}{:02X?}{:02X?}}}",
-               self.0,
-               self.1,
-               self.2,
-               self.3, self.4,
-               self.5, self.6, self.7, self.8, self.9, self.10)
-    }
-}
+pub use crate::structs::{DPID, GUID};
 
 /// The type of DirectPlay session to create; either joining or hosting a session.
 #[derive(Clone, Copy)]
