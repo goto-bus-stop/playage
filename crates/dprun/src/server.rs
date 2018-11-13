@@ -22,9 +22,9 @@ pub enum AppMessage {
 }
 
 pub trait ServiceProvider: Sync + Send {
-    fn enum_sessions(&mut self, mut controller: AppController, id: u32, data: EnumSessionsData);
-    fn open(&mut self, mut controller: AppController, id: u32, data: OpenData);
-    fn create_player(&mut self, mut controller: AppController, id: u32, data: CreatePlayerData);
+    fn enum_sessions(&mut self, controller: AppController, id: u32, data: EnumSessionsData);
+    fn open(&mut self, controller: AppController, id: u32, data: OpenData);
+    fn create_player(&mut self, controller: AppController, id: u32, data: CreatePlayerData);
 }
 
 #[derive(Clone)]

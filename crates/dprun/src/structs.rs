@@ -1,4 +1,4 @@
-type DPID = i32;
+pub type DPID = i32;
 
 #[derive(Debug)]
 #[repr(C)]

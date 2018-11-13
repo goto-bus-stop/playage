@@ -10,6 +10,7 @@ use crate::server::HostServer;
 use crate::structs::*;
 
 pub use crate::server::{AppController, ServiceProvider};
+pub use crate::structs::DPID;
 
 /// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
 #[derive(Clone, Copy, PartialEq, Eq)]

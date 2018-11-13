@@ -5,3 +5,10 @@ authors = ["Renée Kooi <renee@kooi.me>"]
 edition = "2018"
 
 [dependencies]
+tokio = "^0.1.0"
+dprun = { path = "crates/dprun" }
+
+[workspace]
+members = [
+  "crates/dprun"
+]
