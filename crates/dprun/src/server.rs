@@ -28,12 +28,16 @@ pub trait ServiceProvider: Sync + Send {
     fn reply(&mut self, controller: AppController, id: u32, data: ReplyData);
 }
 
+/// Struct containing methods to control the service provider host server.
 #[derive(Clone)]
 pub struct ServerController {
     sender: Sender<ControlMessage>,
 }
 
 impl ServerController {
+    /// Create a host server controller.
+    ///
+    /// Returns the controller and the message stream it generates.
     pub fn create() -> (Self, Receiver<ControlMessage>) {
         // TODO figure out appropriate buffer size
         // May only need to be oneshot
@@ -45,6 +49,9 @@ impl ServerController {
         (controller, receiver)
     }
 
+    /// Stop the host server.
+    ///
+    /// Returns a Future, so make sure to consume it.
     pub fn stop(&mut self) -> futures::StartSend<ControlMessage, SendError<ControlMessage>> {
         self.sender.start_send(ControlMessage::Stop)
     }
@@ -92,12 +99,6 @@ macro_rules! cast_message {
             cast
         }
     }
-}
-
-#[derive(Debug)]
-enum EventType {
-    Socket(TcpStream),
-    Control(ControlMessage),
 }
 
 fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller: &mut AppController, id: u32, method: &[u8], message: &[u8]) -> impl Future<Item = (), Error = std::io::Error> {
@@ -172,6 +173,12 @@ fn handle_connection(service_provider: Arc<Mutex<Box<ServiceProvider>>>, sock: T
 
     tokio::spawn(future);
     Ok(())
+}
+
+#[derive(Debug)]
+enum EventType {
+    Socket(TcpStream),
+    Control(ControlMessage),
 }
 
 pub struct HostServer {
