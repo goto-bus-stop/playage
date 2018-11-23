@@ -26,6 +26,7 @@ pub trait ServiceProvider: Sync + Send {
     fn open(&mut self, controller: AppController, id: u32, data: OpenData);
     fn create_player(&mut self, controller: AppController, id: u32, data: CreatePlayerData);
     fn reply(&mut self, controller: AppController, id: u32, data: ReplyData);
+    fn send(&mut self, controller: AppController, id: u32, data: SendData);
 }
 
 /// Struct containing methods to control the service provider host server.
@@ -124,6 +125,11 @@ fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller
             let reply = ReplyData::parse(message);
             service_provider.lock().unwrap()
                 .reply(controller.clone(), id, reply)
+        },
+        b"send" => {
+            let send = SendData::parse(message);
+            service_provider.lock().unwrap()
+                .send(controller.clone(), id, send)
         },
         method => {
             println!("[HostServer::process_message] HostServer message: {} {:?}, {:?}", id, method, message);

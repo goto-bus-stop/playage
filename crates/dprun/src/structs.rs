@@ -53,6 +53,49 @@ pub struct OpenData {
   pub session_flags: i32,
 }
 
+const GUID_NULL: GUID = GUID(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
+
+#[derive(Debug)]
+pub struct SendData {
+    pub flags: i32,
+    pub receiver_id: Option<GUID>,
+    pub sender_id: DPID,
+    pub system_message: bool,
+    pub message: Vec<u8>,
+}
+
+impl SendData {
+    pub fn parse(bytes: &[u8]) -> Self {
+        let mut read = Cursor::new(bytes);
+
+        let flags = read.get_i32_le();
+
+        let mut receiver_id = [0; 16];
+        read.copy_to_slice(&mut receiver_id);
+        let receiver_id: GUID = unsafe { mem::transmute(receiver_id) };
+        let receiver_id = if receiver_id == GUID_NULL {
+            None
+        } else {
+            Some(receiver_id)
+        };
+
+        let _receiver_dpid = read.get_i32_le();
+        let sender_id = read.get_i32_le();
+        let system_message = read.get_i32_le() != 0;
+        let message_size = read.get_i32_le();
+        let mut message = vec![0; message_size as usize];
+        read.copy_to_slice(&mut message);
+
+        Self {
+            flags,
+            receiver_id,
+            sender_id,
+            system_message,
+            message,
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct ReplyData {
     pub reply_to: GUID,

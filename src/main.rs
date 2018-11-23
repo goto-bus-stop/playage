@@ -52,6 +52,19 @@ impl LocalOnlyServer {
             player.send(data.to_vec());
         });
     }
+
+    fn send(&mut self, to_player_id: Option<GUID>, data: &[u8]) {
+        if to_player_id.is_none() {
+            match self.name_server {
+                Some(ref mut name_server) => name_server.send(data.to_vec()),
+                None => panic!("Tried to send message to nonexistent name server"),
+            };
+        } else {
+            self.players.values_mut().for_each(|player| {
+                player.send(data.to_vec());
+            });
+        }
+    }
 }
 
 struct LocalOnlySP {
@@ -90,6 +103,12 @@ impl ServiceProvider for LocalOnlySP {
         println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
         self.server.lock().unwrap()
             .reply(data.reply_to, &data.message)
+    }
+
+    fn send(&mut self, controller: AppController, id: u32, data: SendData) {
+        println!("[LocalOnlySP::send] Got Send message: {:?}", data);
+        self.server.lock().unwrap()
+            .send(data.receiver_id, &data.message)
     }
 }
 
