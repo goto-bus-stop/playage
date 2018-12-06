@@ -6,7 +6,7 @@ use std::io::Cursor;
 pub type DPID = i32;
 
 /// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
-#[derive(Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash)]
 pub struct GUID(pub u32, pub u16, pub u16, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8);
 
 impl Display for GUID {
@@ -31,11 +31,35 @@ impl Debug for GUID {
     }
 }
 
+fn read_guid(read: &mut Buf) -> GUID {
+    let mut guid = [0; 16];
+    read.copy_to_slice(&mut guid);
+    unsafe { mem::transmute(guid) }
+}
+
 #[derive(Debug)]
 #[repr(C)]
 pub struct CreatePlayerData {
-  pub player_id: DPID,
+  // pub player_id: DPID,
+  pub player_guid: GUID,
   pub flags: i32,
+}
+
+impl CreatePlayerData {
+    pub fn parse(bytes: &[u8]) -> Self {
+        let mut read = Cursor::new(bytes);
+
+        let _dpid = read.get_i32_le();
+        let guid = read_guid(&mut read);
+
+        let flags = read.get_i32_le();
+
+        Self {
+            // player_id: dpid,
+            player_guid: guid,
+            flags,
+        }
+    }
 }
 
 #[derive(Debug)]
@@ -59,7 +83,7 @@ const GUID_NULL: GUID = GUID(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 pub struct SendData {
     pub flags: i32,
     pub receiver_id: Option<GUID>,
-    pub sender_id: DPID,
+    pub sender_id: GUID,
     pub system_message: bool,
     pub message: Vec<u8>,
 }
@@ -70,17 +94,12 @@ impl SendData {
 
         let flags = read.get_i32_le();
 
-        let mut receiver_id = [0; 16];
-        read.copy_to_slice(&mut receiver_id);
-        let receiver_id: GUID = unsafe { mem::transmute(receiver_id) };
-        let receiver_id = if receiver_id == GUID_NULL {
-            None
-        } else {
-            Some(receiver_id)
+        let receiver_id = match read_guid(&mut read) {
+            GUID_NULL => None,
+            guid => Some(guid),
         };
+        let sender_id = read_guid(&mut read);
 
-        let _receiver_dpid = read.get_i32_le();
-        let sender_id = read.get_i32_le();
         let system_message = read.get_i32_le() != 0;
         let message_size = read.get_i32_le();
         let mut message = vec![0; message_size as usize];
@@ -107,9 +126,7 @@ impl ReplyData {
     pub fn parse(bytes: &[u8]) -> Self {
         let mut read = Cursor::new(bytes);
 
-        let mut reply_to = [0; 16];
-        read.copy_to_slice(&mut reply_to);
-        let reply_to: GUID = unsafe { mem::transmute(reply_to) };
+        let mut reply_to = read_guid(&mut read);
 
         let name_server_id = read.get_i32_le();
         let message_size = read.get_i32_le();

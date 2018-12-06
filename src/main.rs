@@ -18,7 +18,7 @@ const DPLAYI_PLAYER_LOCAL: i32 = 8;
 
 struct LocalOnlyServer {
     name_server: Option<AppController>,
-    players: HashMap<DPID, AppController>,
+    players: HashMap<GUID, AppController>,
     enumers: HashMap<DPID, AppController>,
 }
 
@@ -31,11 +31,11 @@ impl LocalOnlyServer {
         }))
     }
 
-    pub fn set_name_server(&mut self, _id: DPID, controller: AppController) {
+    pub fn set_name_server(&mut self, _id: GUID, controller: AppController) {
         self.name_server = Some(controller);
     }
 
-    pub fn create_player(&mut self, id: DPID, controller: AppController) {
+    pub fn create_player(&mut self, id: GUID, controller: AppController) {
         self.players.insert(id, controller);
     }
 
@@ -48,21 +48,31 @@ impl LocalOnlyServer {
     }
 
     fn reply(&mut self, id: GUID, data: &[u8]) {
-        self.enumers.values_mut().for_each(|player| {
-            player.send(data.to_vec());
-        });
+        match self.players.get_mut(&id) {
+            Some(player) => {
+                player.send(data.to_vec());
+            },
+            None => {
+                self.enumers.values_mut().for_each(|player| {
+                    player.send(data.to_vec());
+                });
+            }
+        }
     }
 
     fn send(&mut self, to_player_id: Option<GUID>, data: &[u8]) {
-        if to_player_id.is_none() {
-            match self.name_server {
-                Some(ref mut name_server) => name_server.send(data.to_vec()),
+        match to_player_id {
+            Some(ref id) => {
+                self.players.get_mut(id).map(|player| {
+                    player.send(data.to_vec());
+                });
+            },
+            None => match self.name_server {
+                Some(ref mut name_server) => {
+                    name_server.send(data.to_vec());
+                },
                 None => panic!("Tried to send message to nonexistent name server"),
-            };
-        } else {
-            self.players.values_mut().for_each(|player| {
-                player.send(data.to_vec());
-            });
+            },
         }
     }
 }
@@ -92,10 +102,10 @@ impl ServiceProvider for LocalOnlySP {
         println!("[LocalOnlySP::create_player] Got CreatePlayer message: {:?}", data);
         if data.flags & DPLAYI_PLAYER_NAMESRVR != 0 {
             self.server.lock().unwrap()
-                .set_name_server(data.player_id, controller)
+                .set_name_server(data.player_guid, controller)
         } else {
             self.server.lock().unwrap()
-                .create_player(data.player_id, controller)
+                .create_player(data.player_guid, controller)
         }
     }
 
@@ -119,6 +129,10 @@ fn main() {
 
     let local_server = LocalOnlyServer::make();
 
+    let dprun_dir = std::env::current_dir()
+        .unwrap()
+        .join("../dprun/bin/debug");
+
     let mut host_guid = [0u8; 16];
     let mut join_guid = [0u8; 16];
     thread_rng().fill(&mut host_guid);
@@ -134,7 +148,7 @@ fn main() {
         .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
         .named_address_part("INetPort", DPAddressValue::Number(2197))
         .named_address_part("SelfID", DPAddressValue::Binary(host_guid))
-        .cwd("/home/goto-bus-stop/Code/aocmulti/dprun/bin/debug".into())
+        .cwd(dprun_dir.clone())
         .finish();
 
     let join_options = DPRunOptions::builder()
@@ -145,7 +159,7 @@ fn main() {
         .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
         .named_address_part("INetPort", DPAddressValue::Number(2198))
         .named_address_part("SelfID", DPAddressValue::Binary(join_guid))
-        .cwd("/home/goto-bus-stop/Code/aocmulti/dprun/bin/debug".into())
+        .cwd(dprun_dir.clone())
         .finish();
 
     let host = run(host_options);

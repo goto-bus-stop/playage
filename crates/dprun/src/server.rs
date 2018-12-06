@@ -117,7 +117,7 @@ fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller
                 .open(controller.clone(), id, open)
         },
         b"crpl" => {
-            let create_player = cast_message!(message as CreatePlayerData);
+            let create_player = CreatePlayerData::parse(message);
             service_provider.lock().unwrap()
                 .create_player(controller.clone(), id, create_player)
         },
