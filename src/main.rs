@@ -37,6 +37,7 @@ impl LocalOnlyServer {
 
     pub fn create_player(&mut self, id: GUID, controller: AppController) {
         self.players.insert(id, controller);
+        println!("Current players: {:?}", self.players.keys().collect::<Vec<&GUID>>());
     }
 
     pub fn enum_sessions(&mut self, message: &[u8], requester: AppController) {
