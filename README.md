@@ -2,6 +2,12 @@
 
 Aspiring cross-platform Age of Empires 2 multiplayer client.
 
+## Status
+
+This cannot yet connect two players on the same machine to each other. Do not expect to use it soon!
+
+ETA: **2029**
+
 ## Aim
 
 The current aim for this project is to provide a simple client that is suitable for casual play on all major platforms, and to provide a modular base to build multiplayer matchmaking clients on.
