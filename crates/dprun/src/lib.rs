@@ -1,3 +1,10 @@
+//! DPRun is a utility application for starting DirectPlay lobbyable applications. This crate wraps
+//! it in a Rust API!
+//!
+//! On Linux, this crate uses Wine to start dprun.
+//!
+//! The DPRun executable must be available separately.
+
 mod server;
 pub mod structs;
 
@@ -11,6 +18,11 @@ use crate::structs::*;
 
 pub use crate::server::{AppController, ServiceProvider};
 pub use crate::structs::{DPID, GUID};
+
+/// The GUID of the DPRun Service Provider.
+const GUID_DPRUNSP: GUID = GUID(0xb1ed2367, 0x609b, 0x4c5c, 0x87, 0x55, 0xd2, 0xa2, 0x9b, 0xb9, 0xa5, 0x54);
+/// The GUID of the DirectPlay address type containing a port number.
+const GUID_INETPORT: GUID = GUID(0xe4524541, 0x8ea5, 0x11d1, 0x8a, 0x96, 0x00, 0x60, 0x97, 0xb0, 0x14, 0x11);
 
 /// The type of DirectPlay session to create; either joining or hosting a session.
 #[derive(Clone, Copy)]
@@ -26,7 +38,9 @@ enum SessionType {
 /// GUIDs.
 #[derive(PartialEq, Eq)]
 enum DPGUIDOrNamed {
+    /// Any GUID.
     GUID(GUID),
+    /// One of the named GUID aliases supported by DPRun.
     Named(String),
 }
 
@@ -54,10 +68,14 @@ pub enum DPAddressValue {
 /// Represents a part of a DirectPlay address, akin to DPCOMPOUNDADDRESSELEMENT in the DirectPlay
 /// C API. Each address part has a data type and a value.
 struct DPAddressPart {
+    /// The data type.
     data_type: DPGUIDOrNamed,
+    /// The value of this address. These are untyped in DirectPlay. If you need something other
+    /// than i32 or String, put raw bytes in DPAddressValue::Binary.
     value: DPAddressValue,
 }
 
+/// Create a DPRunOptions struct instance.
 #[derive(Default)]
 pub struct DPRunOptionsBuilder {
     session_type: Option<SessionType>,
@@ -71,6 +89,8 @@ pub struct DPRunOptionsBuilder {
     cwd: Option<PathBuf>,
 }
 
+/// Holds options for running DPRun. DPRunOptions instances can be created using
+/// DPRunOptions::builder().
 pub struct DPRunOptions {
     session_type: SessionType,
     player_name: String,
@@ -198,9 +218,6 @@ impl DPRunOptionsBuilder {
     }
 }
 
-const GUID_DPRUNSP: GUID = GUID(0xb1ed2367, 0x609b, 0x4c5c, 0x87, 0x55, 0xd2, 0xa2, 0x9b, 0xb9, 0xa5, 0x54);
-const GUID_INETPORT: GUID = GUID(0xe4524541, 0x8ea5, 0x11d1, 0x8a, 0x96, 0x00, 0x60, 0x97, 0xb0, 0x14, 0x11);
-
 /// Represents a dprun game session.
 pub struct DPRun {
     command: Command,
@@ -214,6 +231,7 @@ impl DPRun {
         format!("{:?}", self.command)
     }
 
+    /// Start a game without the host server for the DPRun Service Provider.
     fn start_without_server(mut self) -> impl Future<Item = (), Error = IOError> {
         future::result(self.command.spawn_async())
             .flatten()
@@ -225,6 +243,7 @@ impl DPRun {
             })
     }
 
+    /// Start a game that uses the host server for the DPRun Service Provider.
     fn start_with_server(mut self) -> impl Future<Item = (), Error = IOError> {
         let server = HostServer::new(self.host_server_port.unwrap_or(2197), self.service_provider.unwrap());
         let server_result = future::result(server.start());
@@ -253,6 +272,7 @@ impl DPRun {
     }
 }
 
+/// Run a game using DPRun. The options can be created using DPRunOptions::builder().
 pub fn run(options: DPRunOptions) -> DPRun {
     let mut command = if cfg!(target_os = "windows") {
         Command::new("dprun.exe")

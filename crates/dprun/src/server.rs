@@ -21,6 +21,7 @@ pub enum AppMessage {
     Send(u32, u32, Vec<u8>),
 }
 
+/// Trait for custom Service Provider implementations.
 pub trait ServiceProvider: Sync + Send {
     fn enum_sessions(&mut self, controller: AppController, id: u32, data: EnumSessionsData);
     fn open(&mut self, controller: AppController, id: u32, data: OpenData);
@@ -58,6 +59,7 @@ impl ServerController {
     }
 }
 
+/// Controller for sending messages to the game.
 #[derive(Clone)]
 pub struct AppController {
     sender: Sender<AppMessage>,
