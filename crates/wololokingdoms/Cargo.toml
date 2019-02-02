@@ -1,0 +1,12 @@
+[package]
+name = "wololokingdoms"
+version = "0.1.0"
+authors = ["Renée Kooi <renee@kooi.me>"]
+edition = "2018"
+build = "build.rs"
+
+[dependencies]
+# aoc_userpatch = { path = "../aoc_userpatch" }
+
+[build-dependencies]
+cmake = "^0.1.35"

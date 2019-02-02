@@ -1,0 +1,4 @@
+[submodule "third_party/wololokingdoms"]
+	path = third_party/wololokingdoms
+	url = https://github.com/goto-bus-stop/WololoKingdoms
+	branch = libwololokingdoms
