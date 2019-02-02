@@ -6,6 +6,7 @@ edition = "2018"
 build = "build.rs"
 
 [dependencies]
+libc = "^0.2.48"
 # aoc_userpatch = { path = "../aoc_userpatch" }
 
 [build-dependencies]
