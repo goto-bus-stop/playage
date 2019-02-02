@@ -6,6 +6,7 @@
 //! The DPRun executable must be available separately.
 
 mod server;
+mod inspect;
 pub mod structs;
 
 use std::process::Command;

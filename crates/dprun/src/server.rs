@@ -6,8 +6,9 @@ use tokio::io::Result;
 use tokio::codec::{Framed, LengthDelimitedCodec};
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
-use bytes::{BytesMut, BufMut, ByteOrder, BigEndian};
+use bytes::{Bytes, BytesMut, BufMut, ByteOrder, BigEndian};
 use crate::structs::*;
+use crate::inspect::print_network_message;
 
 #[derive(Debug)]
 pub enum ControlMessage {
@@ -110,6 +111,7 @@ fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller
             let enum_sessions = EnumSessionsData {
                 message: message.to_vec(),
             };
+            print_network_message(Bytes::from(&enum_sessions.message[..]));
             service_provider.lock().unwrap()
                 .enum_sessions(controller.clone(), id, enum_sessions)
         },
@@ -125,11 +127,13 @@ fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller
         },
         b"repl" => {
             let reply = ReplyData::parse(message);
+            print_network_message(Bytes::from(&reply.message[..]));
             service_provider.lock().unwrap()
                 .reply(controller.clone(), id, reply)
         },
         b"send" => {
             let send = SendData::parse(message);
+            print_network_message(Bytes::from(&send.message[..]));
             service_provider.lock().unwrap()
                 .send(controller.clone(), id, send)
         },
