@@ -5,6 +5,7 @@ authors = ["Renée Kooi <renee@kooi.me>"]
 edition = "2018"
 
 [dependencies]
+aoc-userpatch = { path = "crates/aoc-userpatch" }
 dprun = { path = "crates/dprun" }
 rand = "^0.5.0"
 tokio = "^0.1.0"
