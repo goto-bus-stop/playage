@@ -27,7 +27,13 @@ struct ProtocolMessage {
 enum Command {
     EnumSessionsReply(String, GUID),
     EnumSessions(GUID, u32),
+    RequestPlayerId(u32),
+    RequestPlayerReply(u32),
     CreatePlayer(u32, String),
+    DeletePlayer(u32),
+    AddForwardRequest(u32, u32),
+    Ping(u32, u32),
+    PingReply(u32, u32),
     SuperEnumPlayersReply,
     PacketizedData(u32, u32),
     PacketizedMessage(Box<ProtocolMessage>),
@@ -51,6 +57,14 @@ fn parse_cmd(cmd: u16, mut message: Bytes) -> Command {
             let flags = LittleEndian::read_u32(&message.split_to(4));
             Command::EnumSessions(guid, flags)
         },
+        0x05 => {
+            let flags = LittleEndian::read_u32(&message.split_to(4));
+            Command::RequestPlayerId(flags)
+        },
+        0x07 => {
+            let new_id = LittleEndian::read_u32(&message.split_to(4));
+            Command::RequestPlayerReply(new_id)
+        },
         0x08 => {
             message.advance(20);
             message.advance(8);
@@ -59,6 +73,26 @@ fn parse_cmd(cmd: u16, mut message: Bytes) -> Command {
             message.advance(8 * 4);
             let name = String::from_utf8_lossy(&message[0..name_len]);
             Command::CreatePlayer(id, name.to_string())
+        },
+        0x0b => {
+            message.advance(4);
+            let id = LittleEndian::read_u32(&message.split_to(4));
+            Command::DeletePlayer(id)
+        },
+        0x13 => {
+            let to = LittleEndian::read_u32(&message.split_to(4));
+            let new_player = LittleEndian::read_u32(&message.split_to(4));
+            Command::AddForwardRequest(to, new_player)
+        },
+        0x16 => {
+            let from = LittleEndian::read_u32(&message.split_to(4));
+            let ticks = LittleEndian::read_u32(&message.split_to(4));
+            Command::Ping(from, ticks)
+        },
+        0x17 => {
+            let from = LittleEndian::read_u32(&message.split_to(4));
+            let ticks = LittleEndian::read_u32(&message.split_to(4));
+            Command::PingReply(from, ticks)
         },
         0x29 => {
             Command::SuperEnumPlayersReply
@@ -98,5 +132,6 @@ pub fn print_network_message(mut message: Bytes) {
     let mut header = [0; 16];
     header.copy_from_slice(&message.split_to(16));
     let guid: GUID = unsafe { mem::transmute(header) };
-    println!("[print_network_message] next message is: {:?} {:?}", guid, parse_message(message));
+    println!("[print_network_message] message from: {:?}", guid);
+    println!("{:#?}", parse_message(message));
 }

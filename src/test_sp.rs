@@ -86,7 +86,7 @@ impl LocalOnlySP {
 
 impl ServiceProvider for LocalOnlySP {
     fn enum_sessions(&mut self, controller: AppController, _id: u32, data: EnumSessionsData) {
-        println!("[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}", data);
+        // println!("[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}", data);
         self.server.lock().unwrap()
             .enum_sessions(&data.message, controller)
     }
@@ -107,13 +107,13 @@ impl ServiceProvider for LocalOnlySP {
     }
 
     fn reply(&mut self, controller: AppController, _id: u32, data: ReplyData) {
-        println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
+        // println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
         self.server.lock().unwrap()
             .reply(data.reply_to, &data.message)
     }
 
     fn send(&mut self, controller: AppController, id: u32, data: SendData) {
-        println!("[LocalOnlySP::send] Got Send message: {:?}", data);
+        // println!("[LocalOnlySP::send] Got Send message: {:?}", data);
         self.server.lock().unwrap()
             .send(data.receiver_id, &data.message)
     }
