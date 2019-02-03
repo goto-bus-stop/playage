@@ -2,11 +2,24 @@ use std::mem;
 use bytes::{Bytes, ByteOrder, LittleEndian};
 use crate::structs::GUID;
 
+fn read_guid(slice: &[u8]) -> GUID {
+    let mut guid = [0; 16];
+    guid.copy_from_slice(slice);
+    unsafe { mem::transmute(guid) }
+}
+
+struct CmdId(u16);
+impl std::fmt::Debug for CmdId {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "0x{:x}", self.0)
+    }
+}
+
 #[derive(Debug)]
 struct ProtocolMessage {
-    signature: [u8; 4],
+    signature: String,
     version: u16,
-    cmd: u16,
+    cmd: CmdId,
     body: Command,
 }
 
@@ -27,18 +40,16 @@ fn parse_cmd(cmd: u16, mut message: Bytes) -> Command {
         0x01 => {
             let size = LittleEndian::read_u32(&message.split_to(4)) as usize;
             message.advance(4);
-            let mut guid = [0; 16];
-            guid.copy_from_slice(&message.split_to(16));
+            let guid = read_guid(&message.split_to(16));
             message.advance(size - 24);
             let _name_offset = LittleEndian::read_u32(&message.split_to(4));
             let name = String::from_utf8_lossy(&message);
-            Command::EnumSessionsReply(name.to_string(), unsafe { mem::transmute(guid) })
+            Command::EnumSessionsReply(name.to_string(), guid)
         },
         0x02 => {
-            let mut guid = [0; 16];
-            guid.copy_from_slice(&message.split_to(16));
+            let guid = read_guid(&message.split_to(16));
             let flags = LittleEndian::read_u32(&message.split_to(4));
-            Command::EnumSessions(unsafe { mem::transmute(guid) }, flags)
+            Command::EnumSessions(guid, flags)
         },
         0x08 => {
             message.advance(20);
@@ -76,9 +87,9 @@ fn parse_message(mut message: Bytes) -> ProtocolMessage {
     let version = LittleEndian::read_u16(&message.split_to(2));
     let sub = parse_cmd(cmd, message);
     ProtocolMessage {
-        signature,
+        signature: String::from_utf8_lossy(&signature).to_string(),
         version,
-        cmd,
+        cmd: CmdId(cmd),
         body: sub,
     }
 }
