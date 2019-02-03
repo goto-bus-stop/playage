@@ -77,6 +77,16 @@ pub struct OpenData {
   pub session_flags: i32,
 }
 
+impl OpenData {
+    pub fn parse(bytes: &[u8]) -> Self {
+        assert_eq!(bytes.len(), mem::size_of::<Self>());
+        let mut buffer = [0; mem::size_of::<Self>()];
+        buffer.copy_from_slice(bytes);
+        let cast: Self = unsafe { mem::transmute(buffer) };
+        cast
+    }
+}
+
 const GUID_NULL: GUID = GUID(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0);
 
 #[derive(Debug)]

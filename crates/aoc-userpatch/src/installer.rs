@@ -1,9 +1,9 @@
 use std::io::{Result, Write};
 
-static setupaoc_exe: &'static [u8] = include_bytes!("../resources/SetupAoC.exe");
+static SETUPAOC_EXE: &'static [u8] = include_bytes!("../resources/SetupAoC.exe");
 
 pub fn extract_installer<W>(output: &mut W) -> Result<()>
     where W: Write
 {
-    output.write_all(setupaoc_exe)
+    output.write_all(SETUPAOC_EXE)
 }

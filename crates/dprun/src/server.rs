@@ -93,18 +93,6 @@ impl AppController {
     }
 }
 
-macro_rules! cast_message {
-    ($message:ident as $type:ty) => {
-        {
-            assert_eq!($message.len(), mem::size_of::<$type>());
-            let mut buffer = [0; mem::size_of::<$type>()];
-            buffer.copy_from_slice(&$message);
-            let cast: $type = unsafe { mem::transmute(buffer) };
-            cast
-        }
-    }
-}
-
 fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller: &mut AppController, id: u32, method: &[u8], message: &[u8]) -> impl Future<Item = (), Error = std::io::Error> {
     match method {
         b"enum" => {
@@ -116,7 +104,7 @@ fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller
                 .enum_sessions(controller.clone(), id, enum_sessions)
         },
         b"open" => {
-            let open = cast_message!(message as OpenData);
+            let open = OpenData::parse(message);
             service_provider.lock().unwrap()
                 .open(controller.clone(), id, open)
         },

@@ -13,6 +13,7 @@ tokio = "^0.1.0"
 [workspace]
 members = [
   "crates/aoc-userpatch",
+  "crates/aoc-spectate",
   "crates/dprun",
   "crates/wololokingdoms"
 ]
