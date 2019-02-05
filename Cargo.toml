@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 aoc-userpatch = { path = "crates/aoc-userpatch" }
+wololokingdoms = { path = "crates/wololokingdoms" }
 dprun = { path = "crates/dprun" }
 dpsp-local-only = { path = "crates/dpsp-local-only" }
 dpsp-libp2p = { path = "crates/dpsp-libp2p" }

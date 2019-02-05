@@ -1,3 +1,4 @@
+use std::path::PathBuf;
 use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use tokio::prelude::*;
@@ -8,6 +9,12 @@ use dprun::{
     GUID,
     DPAddressValue,
     DPRunOptions,
+};
+use wololokingdoms::{
+    DlcLevel,
+    InstallType,
+    ConvertOptions,
+    Converter,
 };
 use dpsp_local_only::{
     LocalOnlyServer,
@@ -28,6 +35,15 @@ enum SPType {
 fn main() {
     let dpchat = GUID(0x5BFD_B060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
     let test_session_id = GUID(0x5BFD_B060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
+    let _options = ConvertOptions {
+        use_regional_monks: true,
+        copy_maps: true,
+        copy_custom_maps: false,
+        fix_flags: true,
+        install_directory: PathBuf::from(""),
+        dlc_level: DlcLevel::RiseOfTheRajas,
+        ..Default::default()
+    };
 
     let dprun_dir = std::env::current_dir()
         .unwrap()
