@@ -1,12 +1,12 @@
-use std::path::PathBuf;
-use std::sync::Arc;
-use std::mem;
 use std::ffi::{CStr, CString};
-use libc::{c_char, c_void};
+use std::mem;
+use std::path::{Path, PathBuf};
+use std::sync::Arc;
 #[cfg(not(target_os = "windows"))]
 use std::os::unix::ffi::OsStrExt;
 #[cfg(target_os = "windows")]
 use std::os::windows::ffi::OsStrExt;
+use libc::{c_char, c_void};
 
 #[repr(C)]
 struct FFIWKSettings {
@@ -23,15 +23,14 @@ struct FFIWKSettings {
     fix_flags: bool,
     replace_tooltips: bool,
     use_grid: bool,
-    install_directory: *const c_char,
     language: *const c_char,
     dlc_level: i32,
     patch: i32,
     hotkey_choice: i32,
-    hd_path: *const c_char,
-    out_path: *const c_char,
-    voobly_dir: *const c_char,
-    up_dir: *const c_char,
+    hd_directory: *const c_char,
+    aoc_directory: *const c_char,
+    voobly_directory: *const c_char,
+    userpatch_directory: *const c_char,
     mod_name: *const c_char,
 }
 
@@ -55,17 +54,17 @@ extern "C" {
 }
 
 #[cfg(target_os = "windows")]
-fn encode_path(buf: PathBuf) -> *const c_char {
-    buf.as_os_str()
-        .encode_wide()
-        .collect::<&[u16]>()
-        .as_ptr()
+fn encode_path(buf: PathBuf) -> &[u8] {
+    unimplemented!()
+    // buf.as_os_str()
+    //     .encode_wide()
+    //     .collect::<&[u16]>()
+    //     .as_ptr()
 }
 #[cfg(not(target_os = "windows"))]
-fn encode_path(buf: PathBuf) -> *const c_char {
+fn encode_path(buf: &Path) -> &[u8] {
     buf.as_os_str()
         .as_bytes()
-        .as_ptr() as *const c_char
 }
 
 /// Identifies the DLCs that a player has installed.
@@ -97,15 +96,14 @@ pub struct ConvertOptions {
     pub restricted_civ_mods: bool,
     pub fix_flags: bool,
     pub replace_tooltips: bool,
-    pub install_directory: PathBuf,
     pub language: String,
     pub dlc_level: DlcLevel,
     pub patch: i32,
     pub hotkey_choice: i32,
-    pub hd_path: PathBuf,
-    pub out_path: PathBuf,
-    pub voobly_dir: PathBuf,
-    pub up_dir: PathBuf,
+    pub hd_directory: Option<PathBuf>,
+    pub aoc_directory: Option<PathBuf>,
+    pub voobly_directory: Option<PathBuf>,
+    pub userpatch_directory: Option<PathBuf>,
     pub mod_name: String,
     // Additional mods
     pub use_regional_monks: bool,
@@ -129,47 +127,38 @@ impl Default for ConvertOptions {
             use_no_snow: false,
             fix_flags: false,
             replace_tooltips: false,
-            install_directory: PathBuf::from(""),
             language: String::from("en"),
             dlc_level: DlcLevel::TheForgotten,
             patch: 0,
             hotkey_choice: 0,
-            hd_path: PathBuf::from(""),
-            out_path: PathBuf::from(""),
-            voobly_dir: PathBuf::from(""),
-            up_dir: PathBuf::from(""),
+            hd_directory: None,
+            aoc_directory: None,
+            voobly_directory: None,
+            userpatch_directory: None,
             mod_name: String::from("WololoKingdoms"),
         }
     }
 }
 
 impl ConvertOptions {
-    fn into_ffi(self) -> FFIWKSettings {
-        FFIWKSettings {
-            use_voobly: self.install_type == InstallType::Voobly,
-            use_exe: self.install_type == InstallType::UserPatch,
-            use_both: self.install_type == InstallType::Both,
-            use_regional_monks: self.use_regional_monks,
-            use_small_trees: self.use_small_trees,
-            use_short_walls: self.use_short_walls,
-            copy_maps: self.copy_maps,
-            copy_custom_maps: self.copy_custom_maps,
-            restricted_civ_mods: self.restricted_civ_mods,
-            use_no_snow: self.use_no_snow,
-            fix_flags: self.fix_flags,
-            replace_tooltips: self.replace_tooltips,
-            use_grid: self.use_grid,
-            install_directory: encode_path(self.install_directory),
-            language: CString::new(self.language).unwrap().as_ptr(),
-            dlc_level: self.dlc_level as i32,
-            patch: self.patch,
-            hotkey_choice: self.hotkey_choice,
-            hd_path: encode_path(self.hd_path),
-            out_path: encode_path(self.out_path),
-            voobly_dir: encode_path(self.voobly_dir),
-            up_dir: encode_path(self.up_dir),
-            mod_name: CString::new(self.mod_name).unwrap().as_ptr(),
-        }
+    pub fn with_aoc_directory(mut self, aoc_directory: &Path) -> Self {
+        self.aoc_directory = Some(aoc_directory.to_owned());
+        self
+    }
+
+    pub fn with_hd_directory(mut self, hd_directory: &Path) -> Self {
+        self.hd_directory = Some(hd_directory.to_owned());
+        self
+    }
+
+    pub fn with_userpatch_directory(mut self, userpatch_directory: &Path) -> Self {
+        self.userpatch_directory = Some(userpatch_directory.to_owned());
+        self
+    }
+
+    pub fn with_voobly_directory(mut self, voobly_directory: &Path) -> Self {
+        self.voobly_directory = Some(voobly_directory.to_owned());
+        self
     }
 }
 
@@ -181,15 +170,59 @@ pub trait ConvertListener {
     }
 }
 
-struct Converter {
-    ffi_listener: FFIWKListener,
+pub struct Converter {
+    // ffi_listener: Box<FFIWKListener>,
     listener: Arc<Box<ConvertListener>>,
     internal: *mut c_void,
 }
 
 impl Converter {
     pub fn new(options: ConvertOptions, listener: Box<ConvertListener>) -> Self {
-        let mut settings = options.into_ffi();
+        let hd_directory = options.hd_directory.expect("Must provide the HD Edition directory");
+        let hd_directory = encode_path(&hd_directory);
+        let aoc_directory = options.aoc_directory.expect("Must provide the AoC output directory");
+        let aoc_directory = encode_path(&aoc_directory);
+        let voobly_directory = if options.install_type == InstallType::Voobly || options.install_type == InstallType::Both {
+            options.voobly_directory.expect("Must provide a Voobly mod folder for this installation type")
+        } else {
+            PathBuf::from("/")
+        };
+        let voobly_directory = encode_path(&voobly_directory);
+        let userpatch_directory = if options.install_type == InstallType::UserPatch || options.install_type == InstallType::Both {
+            options.userpatch_directory.expect("Must provide a UserPatch mod folder for this installation type")
+        } else {
+            PathBuf::from("/")
+        };
+        let userpatch_directory = encode_path(&userpatch_directory);
+
+        let language = CString::new(options.language).unwrap();
+        let mod_name = CString::new(options.mod_name).unwrap();
+
+        let ffi_settings = Box::new(FFIWKSettings {
+            use_voobly: options.install_type == InstallType::Voobly,
+            use_exe: options.install_type == InstallType::UserPatch,
+            use_both: options.install_type == InstallType::Both,
+            use_regional_monks: options.use_regional_monks,
+            use_small_trees: options.use_small_trees,
+            use_short_walls: options.use_short_walls,
+            copy_maps: options.copy_maps,
+            copy_custom_maps: options.copy_custom_maps,
+            restricted_civ_mods: options.restricted_civ_mods,
+            use_no_snow: options.use_no_snow,
+            fix_flags: options.fix_flags,
+            replace_tooltips: options.replace_tooltips,
+            use_grid: options.use_grid,
+            language: language.as_ptr(),
+            dlc_level: options.dlc_level as i32,
+            patch: options.patch,
+            hotkey_choice: options.hotkey_choice,
+            hd_directory: hd_directory.as_ptr() as *const c_char,
+            aoc_directory: aoc_directory.as_ptr() as *const c_char,
+            voobly_directory: voobly_directory.as_ptr() as *const c_char,
+            userpatch_directory: userpatch_directory.as_ptr() as *const c_char,
+            mod_name: mod_name.as_ptr(),
+        });
+
         let arc_listener = Arc::new(listener);
 
         fn get_listener(ptr: *mut c_void) -> Arc<Box<ConvertListener>> {
@@ -239,7 +272,7 @@ impl Converter {
             let listener = get_listener(data);
         }
 
-        let mut ffi_listener = FFIWKListener {
+        let ffi_listener = Box::new(FFIWKListener {
             data: unsafe { mem::transmute(Arc::clone(&arc_listener)) },
             finished,
             log,
@@ -250,18 +283,24 @@ impl Converter {
             create_dialog_replace,
             set_progress,
             install_userpatch,
-        };
+        });
+        eprintln!("create wkconverter");
         let internal = unsafe {
-            wkconverter_create(&mut settings, &mut ffi_listener)
+            wkconverter_create(Box::into_raw(ffi_settings), Box::into_raw(ffi_listener))
         };
+        eprintln!("created wkconverter");
         Self {
             listener: arc_listener,
-            ffi_listener,
             internal,
         }
     }
 
     pub fn run(self) {
         unsafe { wkconverter_run(self.internal) };
+    }
+}
+
+impl Drop for Converter {
+    fn drop(&mut self) {
     }
 }

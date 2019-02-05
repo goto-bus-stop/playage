@@ -1,4 +1,4 @@
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use tokio::prelude::*;
@@ -14,6 +14,7 @@ use wololokingdoms::{
     DlcLevel,
     InstallType,
     ConvertOptions,
+    ConvertListener,
     Converter,
 };
 use dpsp_local_only::{
@@ -31,19 +32,38 @@ enum SPType {
     P2P,
 }
 
+struct PlayAgeConvertListener;
+impl ConvertListener for PlayAgeConvertListener {
+    fn finished(&self) {
+        println!("[wololokingdoms] finished");
+    }
+    fn log(&self, message: &str) {
+        println!("[wololokingdoms] log: {}", message);
+    }
+    fn error(&self, message: &str) {
+        eprintln!("[wololokingdoms] error: {}", message);
+    }
+}
+
 /// Test app that sets up a DPChat session.
 fn main() {
     let dpchat = GUID(0x5BFD_B060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
     let test_session_id = GUID(0x5BFD_B060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
-    let _options = ConvertOptions {
+    let options = ConvertOptions {
         use_regional_monks: true,
         copy_maps: true,
         copy_custom_maps: false,
         fix_flags: true,
-        install_directory: PathBuf::from(""),
         dlc_level: DlcLevel::RiseOfTheRajas,
         ..Default::default()
     };
+
+    let options = options
+        .with_hd_directory(Path::new("/home/goto-bus-stop/aoehd"))
+        .with_aoc_directory(Path::new("/home/goto-bus-stop/VirtualBox VMs/shared/aoc"))
+        .with_userpatch_directory(Path::new("/home/goto-bus-stop/VirtualBox VMs/shared/aoc/Games/WololoKingdoms"));
+
+    Converter::new(options, Box::new(PlayAgeConvertListener)).run();
 
     let dprun_dir = std::env::current_dir()
         .unwrap()
