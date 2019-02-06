@@ -2,34 +2,10 @@
 #include <wksettings.h>
 #include <wkconverter.h>
 
-typedef void* wkconverter_t;
+typedef WKConverter* wkconverter_t;
+typedef WKSettings* wksettings_t;
 
-struct wksettings_t {
-  bool use_voobly;
-  bool use_exe;
-  bool use_both;
-  bool use_regional_monks;
-  bool use_small_trees;
-  bool use_short_walls;
-  bool copy_maps;
-  bool copy_custom_maps;
-  bool restricted_civ_mods;
-  bool use_no_snow;
-  bool fix_flags;
-  bool replace_tooltips;
-  bool use_grid;
-  char* language;
-  int dlc_level;
-  int patch;
-  int hotkey_choice;
-  char* hd_directory;
-  char* aoc_directory;
-  char* voobly_directory;
-  char* userpatch_directory;
-  char* mod_name;
-};
-
-struct wklistener_t {
+struct wklistener_callbacks {
   void* data;
   void (*finished) (void*);
   void (*log) (void*, const char*);
@@ -41,11 +17,12 @@ struct wklistener_t {
   void (*set_progress) (void*, int);
   void (*install_userpatch) (void*, const char*, const char**);
 };
+typedef struct wklistener_callbacks* wklistener_t;
 
 class FFIConvertListener: public WKConvertListener {
-  wklistener_t* listener;
+  wklistener_t listener;
 public:
-  FFIConvertListener (wklistener_t* listener) : listener(listener) {}
+  FFIConvertListener (wklistener_t listener) : listener(listener) {}
   virtual void finished () {
     if (listener->finished) {
       listener->finished(listener->data);
@@ -63,6 +40,7 @@ public:
   }
   virtual void error(std::exception const& err) {
     if (listener->error) {
+      printf("FFIConvertListener#error(%p, %s)\n", listener->data, err.what());
       listener->error(listener->data, err.what());
     }
   }
@@ -86,67 +64,78 @@ public:
   }
 };
 
-extern "C" wkconverter_t wkconverter_create (wksettings_t* settings, wklistener_t* listener) {
+extern "C" wksettings_t wksettings_create () {
+  return new WKSettings();
+}
+
+extern "C" void wksettings_use_voobly (wksettings_t settings, bool use_voobly) {
+  settings->useVoobly = use_voobly;
+}
+extern "C" void wksettings_use_exe (wksettings_t settings, bool use_exe) {
+  settings->useExe = use_exe;
+}
+extern "C" void wksettings_use_both (wksettings_t settings, bool use_both) {
+  settings->useBoth = use_both;
+}
+extern "C" void wksettings_use_monks (wksettings_t settings, bool use_monks) {
+  settings->useMonks = use_monks;
+}
+extern "C" void wksettings_use_small_trees (wksettings_t settings, bool use_small_trees) {
+  settings->useSmallTrees = use_small_trees;
+}
+extern "C" void wksettings_use_short_walls (wksettings_t settings, bool use_short_walls) {
+  settings->useShortWalls = use_short_walls;
+}
+extern "C" void wksettings_copy_maps (wksettings_t settings, bool copy_maps) {
+  settings->copyMaps = copy_maps;
+}
+extern "C" void wksettings_copy_custom_maps (wksettings_t settings, bool copy_custom_maps) {
+  settings->copyCustomMaps = copy_custom_maps;
+}
+extern "C" void wksettings_restricted_civ_mods (wksettings_t settings, bool restricted_civ_mods) {
+  settings->restrictedCivMods = restricted_civ_mods;
+}
+extern "C" void wksettings_use_no_snow (wksettings_t settings, bool use_no_snow) {
+  settings->useNoSnow = use_no_snow;
+}
+extern "C" void wksettings_use_grid (wksettings_t settings, bool use_grid) {
+  settings->useGrid = use_grid;
+}
+extern "C" void wksettings_fix_flags (wksettings_t settings, bool fix_flags) {
+  settings->fixFlags = fix_flags;
+}
+extern "C" void wksettings_replace_tooltips (wksettings_t settings, bool replace_tooltips) {
+  settings->replaceTooltips = replace_tooltips;
+}
+extern "C" void wksettings_hd_path (wksettings_t settings, char* path) {
+  settings->hdPath = path;
+}
+extern "C" void wksettings_out_path (wksettings_t settings, char* path) {
+  settings->outPath = path;
+}
+extern "C" void wksettings_voobly_path (wksettings_t settings, char* path) {
+  settings->vooblyDir = path;
+}
+extern "C" void wksettings_up_path (wksettings_t settings, char* path) {
+  settings->upDir = path;
+}
+
+extern "C" void wksettings_destroy (wksettings_t settings) {
+  delete settings;
+}
+
+extern "C" wkconverter_t wkconverter_create (wksettings_t settings, wklistener_t listener) {
   printf("wkconverter_create(%p, %p)\n", settings, listener);
-
-  printf("use_voobly %d\n", settings->use_voobly);
-  printf("use_exe %d\n", settings->use_exe);
-  printf("use_both %d\n", settings->use_both);
-  printf("use_regional_monks %d\n", settings->use_regional_monks);
-  printf("use_small_trees %d\n", settings->use_small_trees);
-  printf("use_short_walls %d\n", settings->use_short_walls);
-  printf("copy_maps %d\n", settings->copy_maps);
-  printf("copy_custom_maps %d\n", settings->copy_custom_maps);
-  printf("restricted_civ_mods %d\n", settings->restricted_civ_mods);
-  printf("use_no_snow %d\n", settings->use_no_snow);
-  printf("fix_flags %d\n", settings->fix_flags);
-  printf("replace_tooltips %d\n", settings->replace_tooltips);
-  printf("use_grid %d\n", settings->use_grid);
-  printf("language %s\n", settings->language);
-  printf("dlc_level %d\n", settings->dlc_level);
-  printf("patch %d\n", settings->patch);
-  printf("hotkey_choice %d\n", settings->hotkey_choice);
-  printf("hd_directory %s\n", settings->hd_directory);
-  printf("aoc_directory %s\n", settings->aoc_directory);
-  printf("voobly_directory %s\n", settings->voobly_directory);
-  printf("userpatch_directory %s\n", settings->userpatch_directory);
-  printf("mod_name %s\n", settings->mod_name);
-
-  auto convert_settings = new WKSettings(
-    settings->use_voobly,
-    settings->use_exe,
-    settings->use_both,
-    settings->use_regional_monks,
-    settings->use_small_trees,
-    settings->use_short_walls,
-    settings->copy_maps,
-    settings->copy_custom_maps,
-    settings->restricted_civ_mods,
-    settings->use_no_snow,
-    settings->fix_flags,
-    settings->replace_tooltips,
-    settings->use_grid,
-    "", // not used
-    settings->language,
-    settings->dlc_level,
-    settings->patch,
-    settings->hotkey_choice,
-    settings->hd_directory,
-    settings->aoc_directory,
-    settings->voobly_directory,
-    settings->userpatch_directory,
-    std::map<int, std::tuple<std::string,std::string, std::string, int, std::string>>(),
-    settings->mod_name
-  );
   auto convert_listener = new FFIConvertListener(listener);
-
-
-  auto converter = new WKConverter(convert_settings, convert_listener);
-
+  auto converter = new WKConverter(settings, convert_listener);
   return converter;
 }
 
 extern "C" void wkconverter_run (wkconverter_t converter) {
-  auto wkc = reinterpret_cast<WKConverter*>(converter);
-  wkc->run();
+  printf("wkconverter_run(%p)\n", converter);
+  converter->run();
+}
+
+extern "C" void wkconverter_destroy (wkconverter_t converter) {
+  delete converter;
 }

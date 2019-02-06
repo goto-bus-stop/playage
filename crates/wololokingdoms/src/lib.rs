@@ -1,5 +1,5 @@
 use std::ffi::{CStr, CString};
-use std::mem;
+use std::{mem, ptr};
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 #[cfg(not(target_os = "windows"))]
@@ -9,62 +9,54 @@ use std::os::windows::ffi::OsStrExt;
 use libc::{c_char, c_void};
 
 #[repr(C)]
-struct FFIWKSettings {
-    use_voobly: bool,
-    use_exe: bool,
-    use_both: bool,
-    use_regional_monks: bool,
-    use_small_trees: bool,
-    use_short_walls: bool,
-    copy_maps: bool,
-    copy_custom_maps: bool,
-    restricted_civ_mods: bool,
-    use_no_snow: bool,
-    fix_flags: bool,
-    replace_tooltips: bool,
-    use_grid: bool,
-    language: *const c_char,
-    dlc_level: i32,
-    patch: i32,
-    hotkey_choice: i32,
-    hd_directory: *const c_char,
-    aoc_directory: *const c_char,
-    voobly_directory: *const c_char,
-    userpatch_directory: *const c_char,
-    mod_name: *const c_char,
-}
-
-#[repr(C)]
 struct FFIWKListener {
-    data: *mut c_void,
-    finished: extern fn(*mut c_void),
-    log: extern fn(*mut c_void, *const c_char),
-    set_info: extern fn(*mut c_void, *const c_char),
-    error: extern fn(*mut c_void, *const c_char),
-    create_dialog: extern fn(*mut c_void, *const c_char),
-    create_dialog_title: extern fn(*mut c_void, *const c_char, *const c_char),
-    create_dialog_replace: extern fn(*mut c_void, *const c_char, *const c_char, *const c_char),
-    set_progress: extern fn(*mut c_void, u32),
-    install_userpatch: extern fn(*mut c_void, *const c_char, *const *const c_char),
+    data: *const c_void,
+    finished: extern fn(*const c_void),
+    log: extern fn(*const c_void, *const c_char),
+    set_info: extern fn(*const c_void, *const c_char),
+    error: extern fn(*const c_void, *const c_char),
+    create_dialog: extern fn(*const c_void, *const c_char),
+    create_dialog_title: extern fn(*const c_void, *const c_char, *const c_char),
+    create_dialog_replace: extern fn(*const c_void, *const c_char, *const c_char, *const c_char),
+    set_progress: extern fn(*const c_void, u32),
+    install_userpatch: extern fn(*const c_void, *const c_char, *const *const c_char),
 }
 
 extern "C" {
-    fn wkconverter_create(settings: *mut FFIWKSettings, listener: *mut FFIWKListener) -> *mut c_void;
+    fn wksettings_create() -> *mut c_void;
+    fn wksettings_use_voobly(settings: *mut c_void, val: bool);
+    fn wksettings_use_exe(settings: *mut c_void, val: bool);
+    fn wksettings_use_both(settings: *mut c_void, val: bool);
+    fn wksettings_use_monks(settings: *mut c_void, val: bool);
+    fn wksettings_use_short_walls(settings: *mut c_void, val: bool);
+    fn wksettings_copy_maps(settings: *mut c_void, val: bool);
+    fn wksettings_copy_custom_maps(settings: *mut c_void, val: bool);
+    fn wksettings_restricted_civ_mods(settings: *mut c_void, val: bool);
+    fn wksettings_use_no_snow(settings: *mut c_void, val: bool);
+    fn wksettings_use_grid(settings: *mut c_void, val: bool);
+    fn wksettings_fix_flags(settings: *mut c_void, val: bool);
+    fn wksettings_hd_path(settings: *mut c_void, val: *const c_char);
+    fn wksettings_out_path(settings: *mut c_void, val: *const c_char);
+    fn wksettings_voobly_path(settings: *mut c_void, val: *const c_char);
+    fn wksettings_up_path(settings: *mut c_void, val: *const c_char);
+    fn wksettings_destroy(settings: *mut c_void);
+
+    fn wkconverter_create(settings: *mut c_void, listener: *mut FFIWKListener) -> *mut c_void;
     fn wkconverter_run(converter: *mut c_void);
 }
 
 #[cfg(target_os = "windows")]
-fn encode_path(buf: PathBuf) -> &[u8] {
-    unimplemented!()
-    // buf.as_os_str()
-    //     .encode_wide()
-    //     .collect::<&[u16]>()
-    //     .as_ptr()
+fn encode_path(buf: PathBuf) -> *const c_char {
+    buf.as_os_str()
+        .encode_wide()
+        .collect::<&[u16]>()
+        .as_ptr()
 }
 #[cfg(not(target_os = "windows"))]
-fn encode_path(buf: &Path) -> &[u8] {
+fn encode_path(buf: &Path) -> *const c_char {
     buf.as_os_str()
         .as_bytes()
+        .as_ptr() as *const c_char
 }
 
 /// Identifies the DLCs that a player has installed.
@@ -160,6 +152,48 @@ impl ConvertOptions {
         self.voobly_directory = Some(voobly_directory.to_owned());
         self
     }
+
+    pub fn into_ffi(self) -> *mut c_void {
+        let hd_directory = self.hd_directory.expect("Must provide the HD Edition directory");
+        let hd_directory = encode_path(&hd_directory);
+        let aoc_directory = self.aoc_directory.expect("Must provide the AoC output directory");
+        let aoc_directory = encode_path(&aoc_directory);
+        let voobly_directory = if self.install_type == InstallType::Voobly || self.install_type == InstallType::Both {
+            self.voobly_directory.expect("Must provide a Voobly mod folder for this installation type")
+        } else {
+            PathBuf::from("/")
+        };
+        let voobly_directory = encode_path(&voobly_directory);
+        let userpatch_directory = if self.install_type == InstallType::UserPatch || self.install_type == InstallType::Both {
+            self.userpatch_directory.expect("Must provide a UserPatch mod folder for this installation type")
+        } else {
+            PathBuf::from("/")
+        };
+        let userpatch_directory = encode_path(&userpatch_directory);
+
+        let language = CString::new(self.language).unwrap();
+        let mod_name = CString::new(self.mod_name).unwrap();
+
+        unsafe {
+            let settings = wksettings_create();
+            wksettings_use_voobly(settings, self.install_type == InstallType::Voobly);
+            wksettings_use_exe(settings, self.install_type == InstallType::UserPatch);
+            wksettings_use_both(settings, self.install_type == InstallType::Both);
+            wksettings_use_monks(settings, self.use_regional_monks);
+            wksettings_use_short_walls(settings, self.use_short_walls);
+            wksettings_copy_maps(settings, self.copy_maps);
+            wksettings_copy_custom_maps(settings, self.copy_custom_maps);
+            wksettings_restricted_civ_mods(settings, self.restricted_civ_mods);
+            wksettings_use_no_snow(settings, self.use_no_snow);
+            wksettings_use_grid(settings, self.use_grid);
+            wksettings_fix_flags(settings, self.fix_flags);
+            wksettings_hd_path(settings, hd_directory);
+            wksettings_out_path(settings, aoc_directory);
+            wksettings_voobly_path(settings, voobly_directory);
+            wksettings_up_path(settings, userpatch_directory);
+            settings
+        }
+    }
 }
 
 pub trait ConvertListener {
@@ -178,102 +212,67 @@ pub struct Converter {
 
 impl Converter {
     pub fn new(options: ConvertOptions, listener: Box<ConvertListener>) -> Self {
-        let hd_directory = options.hd_directory.expect("Must provide the HD Edition directory");
-        let hd_directory = encode_path(&hd_directory);
-        let aoc_directory = options.aoc_directory.expect("Must provide the AoC output directory");
-        let aoc_directory = encode_path(&aoc_directory);
-        let voobly_directory = if options.install_type == InstallType::Voobly || options.install_type == InstallType::Both {
-            options.voobly_directory.expect("Must provide a Voobly mod folder for this installation type")
-        } else {
-            PathBuf::from("/")
-        };
-        let voobly_directory = encode_path(&voobly_directory);
-        let userpatch_directory = if options.install_type == InstallType::UserPatch || options.install_type == InstallType::Both {
-            options.userpatch_directory.expect("Must provide a UserPatch mod folder for this installation type")
-        } else {
-            PathBuf::from("/")
-        };
-        let userpatch_directory = encode_path(&userpatch_directory);
-
-        let language = CString::new(options.language).unwrap();
-        let mod_name = CString::new(options.mod_name).unwrap();
-
-        let ffi_settings = Box::new(FFIWKSettings {
-            use_voobly: options.install_type == InstallType::Voobly,
-            use_exe: options.install_type == InstallType::UserPatch,
-            use_both: options.install_type == InstallType::Both,
-            use_regional_monks: options.use_regional_monks,
-            use_small_trees: options.use_small_trees,
-            use_short_walls: options.use_short_walls,
-            copy_maps: options.copy_maps,
-            copy_custom_maps: options.copy_custom_maps,
-            restricted_civ_mods: options.restricted_civ_mods,
-            use_no_snow: options.use_no_snow,
-            fix_flags: options.fix_flags,
-            replace_tooltips: options.replace_tooltips,
-            use_grid: options.use_grid,
-            language: language.as_ptr(),
-            dlc_level: options.dlc_level as i32,
-            patch: options.patch,
-            hotkey_choice: options.hotkey_choice,
-            hd_directory: hd_directory.as_ptr() as *const c_char,
-            aoc_directory: aoc_directory.as_ptr() as *const c_char,
-            voobly_directory: voobly_directory.as_ptr() as *const c_char,
-            userpatch_directory: userpatch_directory.as_ptr() as *const c_char,
-            mod_name: mod_name.as_ptr(),
-        });
+        let ffi_settings = options.into_ffi();
 
         let arc_listener = Arc::new(listener);
 
-        fn get_listener(ptr: *mut c_void) -> Arc<Box<ConvertListener>> {
-            Arc::clone(unsafe { mem::transmute(ptr) })
+        fn get_listener(data: *const c_void) -> Arc<Box<ConvertListener>> {
+            let arc_listener_ptr: *const Arc<Box<ConvertListener>> = unsafe { mem::transmute(data) };
+            println!("data: {:x}", data as usize);
+            Arc::clone(unsafe {
+                arc_listener_ptr.as_ref()
+            }.unwrap())
         }
 
-        extern fn finished(data: *mut c_void) {
+        extern fn finished(data: *const c_void) {
             let listener = get_listener(data);
             listener.finished();
         }
 
-        extern fn log(data: *mut c_void, message: *const c_char) {
+        extern fn log(data: *const c_void, message: *const c_char) {
             let listener = get_listener(data);
             let message: &CStr = unsafe { CStr::from_ptr(message) };
             let message: &str = message.to_str().unwrap();
             listener.log(message);
         }
 
-        extern fn set_info(data: *mut c_void, message: *const c_char) {
+        extern fn set_info(data: *const c_void, message: *const c_char) {
             let listener = get_listener(data);
         }
 
-        extern fn error(data: *mut c_void, message: *const c_char) {
+        extern fn error(data: *const c_void, message: *const c_char) {
             let listener = get_listener(data);
+            println!("got listener");
             let message: &CStr = unsafe { CStr::from_ptr(message) };
-            let message: &str = message.to_str().unwrap();
+            println!("CStr::from_ptr {:?}", message.to_str());
+            let message = message.to_str().unwrap();
+            println!("to_str {:?}", message);
             listener.error(message);
         }
 
-        extern fn create_dialog(data: *mut c_void, message: *const c_char) {
+        extern fn create_dialog(data: *const c_void, message: *const c_char) {
             let listener = get_listener(data);
         }
 
-        extern fn create_dialog_title(data: *mut c_void, title: *const c_char, message: *const c_char) {
+        extern fn create_dialog_title(data: *const c_void, title: *const c_char, message: *const c_char) {
             let listener = get_listener(data);
         }
 
-        extern fn create_dialog_replace(data: *mut c_void, message: *const c_char, a: *const c_char, b: *const c_char) {
+        extern fn create_dialog_replace(data: *const c_void, message: *const c_char, a: *const c_char, b: *const c_char) {
             let listener = get_listener(data);
         }
 
-        extern fn set_progress(data: *mut c_void, i: u32) {
+        extern fn set_progress(data: *const c_void, i: u32) {
             let listener = get_listener(data);
         }
 
-        extern fn install_userpatch(data: *mut c_void, exe: *const c_char, flags: *const *const c_char) {
+        extern fn install_userpatch(data: *const c_void, exe: *const c_char, flags: *const *const c_char) {
             let listener = get_listener(data);
         }
 
+        let arc_listener_ptr: *const Arc<Box<ConvertListener>> = &arc_listener;
         let ffi_listener = Box::new(FFIWKListener {
-            data: unsafe { mem::transmute(Arc::clone(&arc_listener)) },
+            data: unsafe { mem::transmute(arc_listener_ptr) },
             finished,
             log,
             set_info,
@@ -286,7 +285,7 @@ impl Converter {
         });
         eprintln!("create wkconverter");
         let internal = unsafe {
-            wkconverter_create(Box::into_raw(ffi_settings), Box::into_raw(ffi_listener))
+            wkconverter_create(ffi_settings, Box::into_raw(ffi_listener))
         };
         eprintln!("created wkconverter");
         Self {

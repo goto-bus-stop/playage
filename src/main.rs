@@ -12,7 +12,6 @@ use dprun::{
 };
 use wololokingdoms::{
     DlcLevel,
-    InstallType,
     ConvertOptions,
     ConvertListener,
     Converter,
@@ -42,6 +41,11 @@ impl ConvertListener for PlayAgeConvertListener {
     }
     fn error(&self, message: &str) {
         eprintln!("[wololokingdoms] error: {}", message);
+    }
+}
+impl Drop for PlayAgeConvertListener {
+    fn drop(&mut self) {
+        println!("PlayAgeConvertListener#drop");
     }
 }
 
