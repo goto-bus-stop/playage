@@ -7,6 +7,7 @@ edition = "2018"
 [dependencies]
 aoc-userpatch = { path = "crates/aoc-userpatch" }
 dprun = { path = "crates/dprun" }
+dpsp-local-only = { path = "crates/dpsp-local-only" }
 rand = "^0.5.0"
 tokio = "^0.1.0"
 

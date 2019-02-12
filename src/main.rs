@@ -1,5 +1,3 @@
-mod test_sp;
-
 use std::time::{Duration, Instant};
 use std::sync::{Arc, Mutex};
 use tokio::prelude::*;
@@ -11,7 +9,7 @@ use dprun::{
     DPAddressValue,
     DPRunOptions,
 };
-use crate::test_sp::{
+use dpsp_local_only::{
     LocalOnlyServer,
     LocalOnlySP,
 };
