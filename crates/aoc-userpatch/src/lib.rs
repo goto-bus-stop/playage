@@ -53,54 +53,54 @@ pub struct InstallOptions {
 
 impl ToString for InstallOptions {
     fn to_string(&self) -> String {
-        let mut flags = String::with_capacity(NUM_INSTALL_OPTIONS);
+        let flag_list = [
+            self.widescreen_command_bar,
+            self.windowed_mode,
+            self.upnp,
 
-        fn x(val: bool) -> char {
-            if val { '1' } else { '0' }
-        }
+            self.alternate_red,
+            self.alternate_purple,
+            self.alternate_gray,
+            self.extend_population_caps,
+            self.replace_snow_with_grass,
+            self.water_animation,
+            self.precision_scrolling,
+            self.shift_group_append,
+            self.keydown_hotkeys,
 
-        flags.push(x(self.widescreen_command_bar));
-        flags.push(x(self.windowed_mode));
-        flags.push(x(self.upnp));
+            self.savegame_format,
+            self.multiple_queue,
+            self.original_patrol_delay,
+            !self.water_movement,
+            !self.weather_system,
+            !self.custom_terrains,
+            !self.terrain_underwater,
+            self.numeric_age_display,
+            self.touch_screen_control,
+            self.store_spec_addresses,
+            self.normal_mouse,
 
-        flags.push(x(self.alternate_red));
-        flags.push(x(self.alternate_purple));
-        flags.push(x(self.alternate_gray));
-        flags.push(x(self.extend_population_caps));
-        flags.push(x(self.replace_snow_with_grass));
-        flags.push(x(self.water_animation));
-        flags.push(x(self.precision_scrolling));
-        flags.push(x(self.shift_group_append));
-        flags.push(x(self.keydown_hotkeys));
+            self.delink_volume,
+            self.wine_chatbox,
+            self.low_quality_environment,
+            self.low_fps,
+            !self.extended_hotkeys,
+            self.force_gameplay_features,
+            self.display_ore_resource,
+            !self.multiplayer_anti_cheat,
+            self.default_background_mode,
+            self.sp_at_multiplayer_speed,
+            self.debug_logging,
+            self.statistics_font_style,
+            self.background_audio_playback,
+            !self.civilian_attack_switch,
+            self.handle_small_farm_selections,
+            self.spec_research_events,
+        ];
 
-        flags.push(x(self.savegame_format));
-        flags.push(x(self.multiple_queue));
-        flags.push(x(self.original_patrol_delay));
-        flags.push(x(!self.water_movement));
-        flags.push(x(!self.weather_system));
-        flags.push(x(!self.custom_terrains));
-        flags.push(x(!self.terrain_underwater));
-        flags.push(x(self.numeric_age_display));
-        flags.push(x(self.touch_screen_control));
-        flags.push(x(self.store_spec_addresses));
-        flags.push(x(self.normal_mouse));
-
-        flags.push(x(self.delink_volume));
-        flags.push(x(self.wine_chatbox));
-        flags.push(x(self.low_quality_environment));
-        flags.push(x(self.low_fps));
-        flags.push(x(!self.extended_hotkeys));
-        flags.push(x(self.force_gameplay_features));
-        flags.push(x(self.display_ore_resource));
-        flags.push(x(!self.multiplayer_anti_cheat));
-        flags.push(x(self.default_background_mode));
-        flags.push(x(self.sp_at_multiplayer_speed));
-        flags.push(x(self.debug_logging));
-        flags.push(x(self.statistics_font_style));
-        flags.push(x(self.background_audio_playback));
-        flags.push(x(!self.civilian_attack_switch));
-        flags.push(x(self.handle_small_farm_selections));
-        flags.push(x(self.spec_research_events));
+        let flags = flag_list.iter()
+            .map(|value| if *value { '1' } else { '0' })
+            .collect::<String>();
 
         format!(r#""-i" "-f:{}""#, flags)
     }
