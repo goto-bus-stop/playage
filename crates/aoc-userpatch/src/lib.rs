@@ -1,34 +1,49 @@
 mod installer;
-use std::process::Command;
 use std::io::Result;
 use std::fs::File;
 use installer::extract_installer;
 
-const NUM_INSTALL_OPTIONS: usize = 20;
-
 pub struct InstallOptions {
     widescreen_command_bar: bool,
+    /// Install windowed mode patch (Windows only).
     windowed_mode: bool,
+    /// Install upnp for automatic port forwarding (Windows only).
     upnp: bool,
 
+    /// Use the alternate dark red minimap color.
     alternate_red: bool,
+    /// Use the alternate dark purple minimap color.
     alternate_purple: bool,
+    /// Use the alternate dark gray minimap color.
     alternate_gray: bool,
+    /// Extend max population cap to 1000.
     extend_population_caps: bool,
+    /// Replace snow terrains with grass.
     replace_snow_with_grass: bool,
+    /// Enable animated water.
     water_animation: bool,
+    /// Snap scrolling to pixels, instead of half-tiles.
     precision_scrolling: bool,
+    /// Hold shift to append to a numbered unit group.
     shift_group_append: bool,
+    /// Trigger hotkeys on keydown instead of keyup.
     keydown_hotkeys: bool,
 
+    /// Use the new savegame file name format.
     savegame_format: bool,
+    /// Enable multiple building queueing.
     multiple_queue: bool,
+    /// Use the original patrol delay.
     original_patrol_delay: bool,
     water_movement: bool,
+    /// Enable the weather system, for rain/snow effects.
     weather_system: bool,
+    /// Enable loading custom terrains from scenarios and ZR@ maps.
     custom_terrains: bool,
     terrain_underwater: bool,
+    /// Show ages as numbers instead of words in the score display.
     numeric_age_display: bool,
+    /// Handle touch screen input events.
     touch_screen_control: bool,
     store_spec_addresses: bool,
     normal_mouse: bool,
