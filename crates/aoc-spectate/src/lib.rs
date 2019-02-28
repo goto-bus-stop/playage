@@ -52,23 +52,21 @@ pub struct SpectateSession {
     source: Box<dyn AsyncRead>,
 }
 
-pub type SpectateSessionFuture = impl Future<Item = SpectateSession, Error = std::io::Error>;
-
 impl SpectateSession {
-    pub fn connect_local() -> SpectateSessionFuture {
+    pub fn connect_local() -> impl Future<Item = SpectateSession, Error = std::io::Error> {
         let addr = "127.0.0.1:53754".parse::<SocketAddr>().unwrap();
         let stream = TcpStream::connect(&addr);
         stream.and_then(move |stream| Self::connect_stream(Box::new(stream)))
     }
 
-    pub fn connect_stream(stream: Box<dyn AsyncRead>) -> SpectateSessionFuture {
+    pub fn connect_stream(stream: Box<dyn AsyncRead>) -> impl Future<Item = SpectateSession, Error = std::io::Error> {
         let header = vec![0; 256];
 
         tokio::io::read_exact(stream, header).and_then(move |(stream, header)| {
-            future::result(SpectateHeader::parse(&header)).map(move |header| {
-                SpectateSession { header, source: stream }
+                future::result(SpectateHeader::parse(&header)).map(move |header| {
+                    SpectateSession { header, source: stream }
+                })
             })
-        })
     }
 }
 
