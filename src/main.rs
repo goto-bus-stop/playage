@@ -13,6 +13,16 @@ use dpsp_local_only::{
     LocalOnlyServer,
     LocalOnlySP,
 };
+use dpsp_libp2p::{
+    Libp2pSP,
+};
+
+#[derive(PartialEq, Eq)]
+enum SPType {
+    TCPIP,
+    Local,
+    P2P,
+}
 
 /// Test app that sets up a DPChat session.
 fn main() {
@@ -23,7 +33,7 @@ fn main() {
         .unwrap()
         .join("../dprun/bin/debug");
 
-    let use_custom_sp = true;
+    let use_sp = SPType::TCPIP;
 
     let mut host_options = DPRunOptions::builder()
         .host(Some(test_session_id))
@@ -37,32 +47,47 @@ fn main() {
         .application(dpchat)
         .cwd(dprun_dir.clone());
 
-    if use_custom_sp {
-        let local_server = Arc::new(Mutex::new(
-                LocalOnlyServer::make()));
+    let mut host_guid = [0u8; 16];
+    let mut join_guid = [0u8; 16];
+    thread_rng().fill(&mut host_guid);
+    thread_rng().fill(&mut join_guid);
 
-        let mut host_guid = [0u8; 16];
-        let mut join_guid = [0u8; 16];
-        thread_rng().fill(&mut host_guid);
-        thread_rng().fill(&mut join_guid);
+    match use_sp {
+        SPType::Local => {
+            let local_server = Arc::new(Mutex::new(
+                    LocalOnlyServer::make()));
 
-        host_options = host_options
-            .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
-            .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
-            .named_address_part("INetPort", DPAddressValue::Number(2197))
-            .named_address_part("SelfID", DPAddressValue::Binary(host_guid.to_vec()));
-        join_options = join_options
-            .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
-            .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
-            .named_address_part("INetPort", DPAddressValue::Number(2198))
-            .named_address_part("SelfID", DPAddressValue::Binary(join_guid.to_vec()));
-    } else {
-        host_options = host_options
-            .named_service_provider("TCPIP")
-            .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()));
-        join_options = join_options
-            .named_service_provider("TCPIP")
-            .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()));
+            host_options = host_options
+                .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
+                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
+                .named_address_part("INetPort", DPAddressValue::Number(2197))
+                .named_address_part("SelfID", DPAddressValue::Binary(host_guid.to_vec()));
+            join_options = join_options
+                .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
+                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
+                .named_address_part("INetPort", DPAddressValue::Number(2198))
+                .named_address_part("SelfID", DPAddressValue::Binary(join_guid.to_vec()));
+        },
+        SPType::P2P => {
+            host_options = host_options
+                .service_provider_handler(Box::new(Libp2pSP::new()))
+                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
+                .named_address_part("INetPort", DPAddressValue::Number(2197))
+                .named_address_part("SelfID", DPAddressValue::Binary(host_guid.to_vec()));
+            join_options = join_options
+                .service_provider_handler(Box::new(Libp2pSP::new()))
+                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
+                .named_address_part("INetPort", DPAddressValue::Number(2198))
+                .named_address_part("SelfID", DPAddressValue::Binary(join_guid.to_vec()));
+        },
+        SPType::TCPIP => {
+            host_options = host_options
+                .named_service_provider("TCPIP")
+                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()));
+            join_options = join_options
+                .named_service_provider("TCPIP")
+                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()));
+        }
     }
 
     let host_options = host_options.finish();
