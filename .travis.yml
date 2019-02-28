@@ -3,6 +3,6 @@ rust:
   - stable
 
 script:
-  - 'cargo build --verbose'
-  - 'cargo test --verbose'
+  - 'cargo build --all --verbose'
+  - 'cargo test --all --verbose'
 cache: cargo
