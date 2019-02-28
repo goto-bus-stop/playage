@@ -1,6 +1,17 @@
 language: rust
+dist: xenial
 rust:
   - stable
+
+addons:
+  apt:
+    sources:
+      - ubuntu-toolchain-r-test
+    packages:
+      - g++-8
+
+env:
+  - CC=gcc-8 CXX=g++-8
 
 script:
   - 'cargo build --all --verbose'
