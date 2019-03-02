@@ -22,13 +22,30 @@ pub enum AppMessage {
     Send(u32, u32, Vec<u8>),
 }
 
+pub struct SPFuture {
+    inner: Box<dyn Future<Item = (), Error = std::io::Error> + Send>,
+}
+impl SPFuture {
+    pub fn new(inner: Box<dyn Future<Item = (), Error = std::io::Error> + Send>) -> Self {
+        Self { inner }
+    }
+}
+impl Future for SPFuture {
+    type Item = ();
+    type Error = std::io::Error;
+
+    fn poll(&mut self) -> std::result::Result<Async<Self::Item>, Self::Error> {
+        self.inner.poll()
+    }
+}
+
 /// Trait for custom Service Provider implementations.
 pub trait ServiceProvider: Sync + Send {
-    fn enum_sessions(&mut self, controller: AppController, id: u32, data: EnumSessionsData);
-    fn open(&mut self, controller: AppController, id: u32, data: OpenData);
-    fn create_player(&mut self, controller: AppController, id: u32, data: CreatePlayerData);
-    fn reply(&mut self, controller: AppController, id: u32, data: ReplyData);
-    fn send(&mut self, controller: AppController, id: u32, data: SendData);
+    fn enum_sessions(&mut self, controller: AppController, id: u32, data: EnumSessionsData) -> SPFuture;
+    fn open(&mut self, controller: AppController, id: u32, data: OpenData) -> SPFuture;
+    fn create_player(&mut self, controller: AppController, id: u32, data: CreatePlayerData) -> SPFuture;
+    fn reply(&mut self, controller: AppController, id: u32, data: ReplyData) -> SPFuture;
+    fn send(&mut self, controller: AppController, id: u32, data: SendData) -> SPFuture;
 }
 
 /// Struct containing methods to control the service provider host server.
@@ -127,9 +144,9 @@ fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller
         },
         method => {
             println!("[HostServer::process_message] HostServer message: {} {:?}, {:?}", id, method, message);
+            SPFuture::new(Box::new(future::finished(())))
         }
     }
-    future::finished(())
 }
 
 fn handle_connection(service_provider: Arc<Mutex<Box<ServiceProvider>>>, sock: TcpStream) -> Result<()> {

@@ -17,7 +17,7 @@ use tokio_process::CommandExt; // spawn_async
 use crate::server::HostServer;
 use crate::structs::*;
 
-pub use crate::server::{AppController, ServiceProvider};
+pub use crate::server::{AppController, ServiceProvider, SPFuture};
 pub use crate::structs::{DPID, GUID};
 
 /// The GUID of the DPRun Service Provider.

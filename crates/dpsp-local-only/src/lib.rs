@@ -1,9 +1,11 @@
+use tokio::prelude::*;
 use dprun::{
     structs::*,
     DPID,
     GUID,
     ServiceProvider,
     AppController,
+    SPFuture,
 };
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -84,18 +86,24 @@ impl LocalOnlySP {
     }
 }
 
+fn immediately() -> SPFuture {
+    SPFuture::new(Box::new(future::finished(())))
+}
+
 impl ServiceProvider for LocalOnlySP {
-    fn enum_sessions(&mut self, controller: AppController, _id: u32, data: EnumSessionsData) {
+    fn enum_sessions(&mut self, controller: AppController, _id: u32, data: EnumSessionsData) -> SPFuture {
         // println!("[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}", data);
         self.server.lock().unwrap()
-            .enum_sessions(&data.message, controller)
+            .enum_sessions(&data.message, controller);
+        immediately()
     }
 
-    fn open(&mut self, _controller: AppController, _id: u32, data: OpenData) {
+    fn open(&mut self, _controller: AppController, _id: u32, data: OpenData) -> SPFuture {
         println!("[LocalOnlySP::open] Got Open message: {:?}", data);
+        immediately()
     }
 
-    fn create_player(&mut self, controller: AppController, _id: u32, data: CreatePlayerData) {
+    fn create_player(&mut self, controller: AppController, _id: u32, data: CreatePlayerData) -> SPFuture {
         println!("[LocalOnlySP::create_player] Got CreatePlayer message: {:?}", data);
         if data.flags & DPLAYI_PLAYER_NAMESRVR != 0 {
             self.server.lock().unwrap()
@@ -104,17 +112,20 @@ impl ServiceProvider for LocalOnlySP {
             self.server.lock().unwrap()
                 .create_player(data.player_guid, controller)
         }
+        immediately()
     }
 
-    fn reply(&mut self, controller: AppController, _id: u32, data: ReplyData) {
+    fn reply(&mut self, controller: AppController, _id: u32, data: ReplyData) -> SPFuture {
         // println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
         self.server.lock().unwrap()
-            .reply(data.reply_to, &data.message)
+            .reply(data.reply_to, &data.message);
+        immediately()
     }
 
-    fn send(&mut self, controller: AppController, id: u32, data: SendData) {
+    fn send(&mut self, controller: AppController, id: u32, data: SendData) -> SPFuture {
         // println!("[LocalOnlySP::send] Got Send message: {:?}", data);
         self.server.lock().unwrap()
-            .send(data.receiver_id, &data.message)
+            .send(data.receiver_id, &data.message);
+        immediately()
     }
 }
