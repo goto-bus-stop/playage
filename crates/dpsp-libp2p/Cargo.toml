@@ -1,0 +1,11 @@
+[package]
+name = "dpsp-libp2p"
+version = "0.1.0"
+authors = ["Renée Kooi <renee@kooi.me>"]
+edition = "2018"
+
+[dependencies]
+dprun = { path = "../dprun" }
+libp2p = { git = "https://github.com/libp2p/rust-libp2p" }
+futures = "^0.1.0"
+tokio = "^0.1.0"
