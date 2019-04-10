@@ -1,12 +1,68 @@
-use futures::{prelude::*, future::poll_fn};
+use futures::{prelude::*, future::poll_fn, future::FutureResult};
 use tokio::prelude::*;
 use libp2p::{
     Multiaddr,
     Swarm,
     mdns::Mdns,
     secio::SecioKeyPair,
+    core::UpgradeInfo,
+    InboundUpgrade,
+    OutboundUpgrade,
+    Transport,
 };
 use dprun::{ServiceProvider, AppController, SPFuture, structs};
+
+#[derive(Debug)]
+pub enum EnumSessionsError {
+    Any,
+}
+
+impl std::fmt::Display for EnumSessionsError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "EnumSessionsError::Any")
+    }
+}
+
+unsafe impl Send for EnumSessionsError {}
+unsafe impl Sync for EnumSessionsError {}
+
+impl std::error::Error for EnumSessionsError {
+}
+
+#[derive(Debug, Default, Clone, Copy)]
+struct EnumSessionsUpgrade;
+impl UpgradeInfo for EnumSessionsUpgrade {
+    type Info = &'static [u8];
+    type InfoIter = std::iter::Once<Self::Info>;
+
+    fn protocol_info(&self) -> Self::InfoIter {
+        std::iter::once(b"/dpsp-enum/0.0.0")
+    }
+}
+
+impl<C> InboundUpgrade<C> for EnumSessionsUpgrade
+    where C: AsyncRead + AsyncWrite
+{
+    type Output = ();
+    type Error = EnumSessionsError;
+    type Future = FutureResult<Self::Output, Self::Error>;
+
+    fn upgrade_inbound(self, i: C, _: Self::Info) -> Self::Future {
+        future::ok(())
+    }
+}
+
+impl<C> OutboundUpgrade<C> for EnumSessionsUpgrade
+    where C: AsyncRead + AsyncWrite
+{
+    type Output = ();
+    type Error = EnumSessionsError;
+    type Future = FutureResult<Self::Output, Self::Error>;
+
+    fn upgrade_outbound(self, i: C, _: Self::Info) -> Self::Future {
+        future::ok(())
+    }
+}
 
 pub struct Libp2pSP {
     local_key: SecioKeyPair,
@@ -33,20 +89,20 @@ impl Libp2pSP {
 
 impl ServiceProvider for Libp2pSP {
     fn enum_sessions(&mut self, controller: AppController, _id: u32, data: structs::EnumSessionsData) -> SPFuture {
-        println!("[Libp2pSP::enum_sessions] {:?}", data);
+        dbg!(&data);
         SPFuture::new(Box::new(future::finished(())))
     }
 
     fn open(&mut self, controller: AppController, _id: u32, data: structs::OpenData) -> SPFuture {
-        println!("[Libp2pSP::open]");
         let transport = libp2p::build_tcp_ws_secio_mplex_yamux(self.local_key.clone());
+        // how to make this work?
+        // .with_upgrade(EnumSessionsUpgrade);
         let mut swarm = Swarm::new(
             transport,
             Mdns::new().unwrap(),
             self.local_key.to_peer_id());
 
         let addr = Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse().unwrap()).unwrap();
-        println!("[Libp2pSP::open] {:?}", addr);
 
         if let Some(dial_addr) = &self.address {
             Swarm::dial_addr(&mut swarm, dial_addr.clone()).unwrap();
@@ -68,13 +124,5 @@ impl ServiceProvider for Libp2pSP {
 
     fn send(&mut self, controller: AppController, _id: u32, data: structs::SendData) -> SPFuture {
         SPFuture::new(Box::new(future::finished(())))
-    }
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
     }
 }

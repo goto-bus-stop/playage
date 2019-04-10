@@ -33,7 +33,7 @@ fn main() {
         .unwrap()
         .join("../dprun/bin/debug");
 
-    let use_sp = SPType::TCPIP;
+    let use_sp = SPType::P2P;
 
     let mut host_options = DPRunOptions::builder()
         .host(Some(test_session_id))
