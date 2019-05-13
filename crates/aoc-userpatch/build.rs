@@ -115,7 +115,6 @@ fn main() -> Result<()> {
     let path = PathBuf::from(env::var("OUT_DIR").unwrap());
     let mut f = File::create(path.join("injections.rs"))?;
     let injections = find_injections()?;
-    // injections.sort_by_key(|a| a.0);
     write!(f, "&[\n")?;
     for inject in &injections {
         match inject {
