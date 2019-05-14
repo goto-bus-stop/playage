@@ -2,7 +2,8 @@ use std::{
     env,
     fs::{self, File},
     io::{Result, Write},
-    path::PathBuf,
+    path::{Path, PathBuf},
+    process::Command,
 };
 use encoding_rs::UTF_16LE;
 
@@ -59,19 +60,18 @@ fn is_hex_string(string: &str) -> bool {
 }
 
 /// Find a list of hex code injections that the UserPatch installer does.
-fn find_injections() -> Result<Vec<Patch>> {
+fn find_injections(exe: &[u8]) -> Result<Vec<Patch>> {
     let mut injections = vec![];
     let mut stack_args = vec![];
     let mut latest_named = String::new();
 
-    let exe = fs::read("resources/SetupAoC.exe")?;
-    for (op, va) in lde::X86.iter(&exe, CODE_BASE_ADDRESS) {
+    for (op, va) in lde::X86.iter(exe, CODE_BASE_ADDRESS) {
         match op.read::<u8>(0) {
             ASM_CALL => {
                 let (target, _) = (va + 5).overflowing_add(op.read::<u32>(1));
                 if target == APPLY_HEX_PATCH_ADDRESS {
                     stack_args.reverse();
-                    let patch = read_c_str(&exe, stack_args[1] - DATA_BASE_ADDRESS);
+                    let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
                     let addr = stack_args[0];
                     assert!(is_hex_string(&patch), "unexpected non-hex string");
                     injections.push(Patch::Hex(addr, patch));
@@ -81,7 +81,7 @@ fn find_injections() -> Result<Vec<Patch>> {
                         injections.push(Patch::Header(latest_named.clone()));
                     }
                     stack_args.reverse();
-                    let patch = read_c_str(&exe, stack_args[1] - DATA_BASE_ADDRESS);
+                    let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
                     let addr = stack_args[0];
                     assert!(is_hex_string(&patch), "unexpected non-hex string");
                     injections.push(Patch::Hex(addr, patch));
@@ -90,7 +90,7 @@ fn find_injections() -> Result<Vec<Patch>> {
                     stack_args.reverse();
                     let addr = stack_args[0];
                     if addr > DATA_BASE_ADDRESS {
-                        latest_named = read_utf16_str(&exe, addr - DATA_BASE_ADDRESS);
+                        latest_named = read_utf16_str(exe, addr - DATA_BASE_ADDRESS);
                     } else {
                         latest_named = String::new();
                     }
@@ -98,7 +98,7 @@ fn find_injections() -> Result<Vec<Patch>> {
                 if target == STRING_CONSTRUCTOR_ADDRESS {
                     stack_args.reverse();
                     let addr = stack_args[0];
-                    latest_named = read_c_str(&exe, addr - DATA_BASE_ADDRESS);
+                    latest_named = read_c_str(exe, addr - DATA_BASE_ADDRESS);
                 }
                 stack_args.clear();
             }
@@ -111,10 +111,36 @@ fn find_injections() -> Result<Vec<Patch>> {
     Ok(injections)
 }
 
+#[cfg(not(os = "windows"))]
+fn upx_unpack(packed_bytes: &[u8], tempdir: &Path) -> Result<Vec<u8>> {
+    fs::write(tempdir.join("packed.exe"), packed_bytes)?;
+    let status = Command::new("upx")
+        .arg("-d")
+        .arg(format!("-o{}", tempdir.join("unpacked.exe").to_str().unwrap()))
+        .arg(tempdir.join("packed.exe"))
+        .status()
+        .expect("could not run upx");
+    if !status.success() {
+        return Err(std::io::Error::new(std::io::ErrorKind::Other, "upx exited nonzero"));
+    }
+    let result = fs::read(tempdir.join("unpacked.exe"))?;
+    fs::remove_file(tempdir.join("packed.exe"))?;
+    fs::remove_file(tempdir.join("unpacked.exe"))?;
+    Ok(result)
+}
+
+#[cfg(os = "windows")]
+fn upx_unpack(packed_bytes: &[u8], tempdir: &Path) -> Result<Vec<u8>> {
+    unimplemented!()
+}
+
 fn main() -> Result<()> {
-    let path = PathBuf::from(env::var("OUT_DIR").unwrap());
-    let mut f = File::create(path.join("injections.rs"))?;
-    let injections = find_injections()?;
+    let out_dir = PathBuf::from(env::var("OUT_DIR").unwrap());
+    let mut f = File::create(out_dir.join("injections.rs"))?;
+
+    let packed_bytes = fs::read("resources/SetupAoC.exe")?;
+    let bytes = upx_unpack(&packed_bytes, &out_dir)?;
+    let injections = find_injections(&bytes)?;
     write!(f, "&[\n")?;
     for inject in &injections {
         match inject {
