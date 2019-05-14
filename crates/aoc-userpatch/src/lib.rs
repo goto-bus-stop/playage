@@ -1,4 +1,6 @@
 mod installer;
+mod patch;
+
 use std::io::Result;
 use std::fs::File;
 use installer::extract_installer;
@@ -182,12 +184,4 @@ pub fn install(options: InstallOptions) -> Result<()> {
 
     std::fs::remove_file("/tmp/up.exe")?;
     unimplemented!();
-}
-
-#[cfg(test)]
-mod tests {
-    #[test]
-    fn it_works() {
-        assert_eq!(2 + 2, 4);
-    }
 }
