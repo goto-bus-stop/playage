@@ -7,10 +7,12 @@ use std::{
 };
 use encoding_rs::UTF_16LE;
 
-/// The location of the apply_hex_patch function in memory space.
-const APPLY_HEX_PATCH_ADDRESS: u32 = 0x00402750;
-/// The location of the apply_named_patch function in memory space.
-const APPLY_NAMED_PATCH_ADDRESS: u32 = 0x004023E0;
+/// The location of the PatchData hex string overload in memory space.
+const HEX_PATCH_ADDRESS: u32 = 0x00402750;
+/// The location of the PatchData hex string + name overload in memory space.
+const NAMED_HEX_PATCH_ADDRESS: u32 = 0x004023E0;
+/// The location of the PatchData bytes oveerload in memory space.
+const BYTE_PATCH_ADDRESS: u32 = 0x00402AF0;
 /// The location of the std::wstring constructor in memory space.
 const STRING_CONSTRUCTOR_ADDRESS: u32 = 0x004AA9C0;
 const STRING_CONSTRUCTOR_ADDRESS16: u32 = 0x004AA8F0;
@@ -54,6 +56,24 @@ fn read_utf16_str(bytes: &[u8], start: u32) -> String {
     UTF_16LE.decode(&str_bytes).0.to_owned().to_string()
 }
 
+fn to_hex(bytes: &[u8]) -> String {
+    fn to_hex_char(c: u8) -> char {
+        match c {
+            0xA...0xF => char::from(b'A' - 10 + c),
+            0x0...0x9 => char::from(b'0' + c),
+            _ => panic!("expected number to be 4 bits, got {}", c),
+        }
+    }
+
+    bytes
+        .iter()
+        .flat_map(|byte| vec![
+            to_hex_char((byte & 0xF0) >> 4),
+            to_hex_char(byte & 0x0F),
+        ])
+        .collect::<String>()
+}
+
 /// Check if a string contains only valid hexadecimal characters ([0-9A-Fa-f]).
 fn is_hex_string(string: &str) -> bool {
     string.chars().all(|c| char::is_ascii_hexdigit(&c))
@@ -69,14 +89,21 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Patch>> {
         match op.read::<u8>(0) {
             ASM_CALL => {
                 let (target, _) = (va + 5).overflowing_add(op.read::<u32>(1));
-                if target == APPLY_HEX_PATCH_ADDRESS {
+                if target == HEX_PATCH_ADDRESS {
                     stack_args.reverse();
                     let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
                     let addr = stack_args[0];
                     assert!(is_hex_string(&patch), "unexpected non-hex string");
                     injections.push(Patch::Hex(addr, patch));
                 }
-                if target == APPLY_NAMED_PATCH_ADDRESS {
+                if target == BYTE_PATCH_ADDRESS {
+                    stack_args.reverse();
+                    let start = (stack_args[1] - DATA_BASE_ADDRESS) as usize;
+                    let patch = &exe[start..start + stack_args[2] as usize];
+                    let addr = stack_args[0];
+                    injections.push(Patch::Hex(stack_args[1] - DATA_BASE_ADDRESS, to_hex(patch)));
+                }
+                if target == NAMED_HEX_PATCH_ADDRESS {
                     if !latest_named.is_empty() {
                         injections.push(Patch::Header(latest_named.clone()));
                     }
