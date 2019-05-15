@@ -24,13 +24,16 @@ fn apply_patch(buffer: &mut [u8], offset: usize, patch: &[u8]) {
 }
 
 /// Install UserPatch 1.5 into a buffer containing a 1.0c executable.
-pub fn install_into(exe_buffer: &mut [u8]) {
+pub fn install_into(exe_buffer: &[u8]) -> Vec<u8> {
     let injections = include!(concat!(env!("OUT_DIR"), "/injections.rs"));
+    let mut bigger_buffer = exe_buffer.to_vec();
+    bigger_buffer.extend(&vec![0; (3072 * 1024) - exe_buffer.len()]);
 
     for Injection(addr, patch) in injections.iter() {
         let patch = decode_hex(&patch);
-        apply_patch(exe_buffer, *addr as usize, &patch);
+        apply_patch(&mut bigger_buffer, *addr as usize, &patch);
     }
+    bigger_buffer
 }
 
 #[cfg(test)]

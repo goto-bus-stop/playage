@@ -5,6 +5,8 @@ use std::io::Result;
 use std::fs::File;
 use installer::extract_installer;
 
+pub use patch::install_into;
+
 pub struct InstallOptions {
     widescreen_command_bar: bool,
     /// Install windowed mode patch (Windows only).
