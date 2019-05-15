@@ -1,4 +1,6 @@
+use std::{env, path::PathBuf};
 use cmake::Config;
+use bindgen::Builder;
 
 fn main() {
     let dst = Config::new("../../third_party/wololokingdoms/libwololokingdoms")
@@ -11,4 +13,11 @@ fn main() {
     println!("cargo:rustc-link-lib=static=wololokingdoms");
     println!("cargo:rustc-link-lib=static=genieutils");
     println!("cargo:rustc-link-lib=dylib=stdc++");
+
+    Builder::default()
+        .header("ffi.h")
+        .generate()
+        .expect("Unable to generate bindings")
+        .write_to_file(PathBuf::from(env::var("OUT_DIR").unwrap()).join("bindings.rs"))
+        .expect("Unable to write bindings");
 }
