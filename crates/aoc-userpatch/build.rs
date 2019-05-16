@@ -11,8 +11,10 @@ use encoding_rs::UTF_16LE;
 const HEX_PATCH_ADDRESS: u32 = 0x00402750;
 /// The location of the PatchData hex string + name overload in memory space.
 const NAMED_HEX_PATCH_ADDRESS: u32 = 0x004023E0;
-/// The location of the PatchData bytes oveerload in memory space.
+/// The location of the PatchData bytes overload in memory space.
 const BYTE_PATCH_ADDRESS: u32 = 0x00402AF0;
+/// The location of the PatchData JMP overload in memory space.
+const JMP_PATCH_ADDRESS: u32 = 0x00402FA0;
 /// The location of the std::wstring constructor in memory space.
 const STRING_CONSTRUCTOR_ADDRESS: u32 = 0x004AA9C0;
 const STRING_CONSTRUCTOR_ADDRESS16: u32 = 0x004AA8F0;
@@ -31,6 +33,7 @@ const ASM_PUSH8: u8 = 0x6A;
 
 enum Patch {
     Header(String),
+    Jmp(u32, u32),
     Hex(u32, String),
 }
 
@@ -113,6 +116,12 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Patch>> {
                     assert!(is_hex_string(&patch), "unexpected non-hex string");
                     injections.push(Patch::Hex(addr, patch));
                 }
+                if target == JMP_PATCH_ADDRESS {
+                    stack_args.reverse();
+                    let addr = stack_args[0];
+                    let to_addr = stack_args[1];
+                    injections.push(Patch::Jmp(addr, to_addr));
+                }
                 if target == STRING_CONSTRUCTOR_ADDRESS16 && stack_args.len() > 0 {
                     stack_args.reverse();
                     let addr = stack_args[0];
@@ -173,6 +182,7 @@ fn main() -> Result<()> {
         match inject {
             Patch::Header(name) => write!(f, "  // {}\n", name)?,
             Patch::Hex(addr, patch) => write!(f, "  Injection({:#x}, \"{}\"),\n", addr, patch)?,
+            Patch::Jmp(addr, to_addr) => write!(f, "  Injection({:#x}, \"E9{:08X}\"),\n", addr, to_addr.overflowing_sub(addr + 5).0.to_be())?,
         }
     }
     write!(f, "]")?;
