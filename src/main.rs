@@ -1,21 +1,11 @@
-use std::time::{Duration, Instant};
+use dprun::{run, DPAddressValue, DPRunOptions, GUID};
+use dpsp_libp2p::Libp2pSP;
+use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
+use rand::{thread_rng, Rng};
 use std::sync::{Arc, Mutex};
+use std::time::{Duration, Instant};
 use tokio::prelude::*;
 use tokio::timer::Delay;
-use rand::{thread_rng, Rng};
-use dprun::{
-    run,
-    GUID,
-    DPAddressValue,
-    DPRunOptions,
-};
-use dpsp_local_only::{
-    LocalOnlyServer,
-    LocalOnlySP,
-};
-use dpsp_libp2p::{
-    Libp2pSP,
-};
 
 #[derive(PartialEq, Eq)]
 enum SPType {
@@ -26,12 +16,34 @@ enum SPType {
 
 /// Test app that sets up a DPChat session.
 fn main() {
-    let dpchat = GUID(0x5BFD_B060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
-    let test_session_id = GUID(0x5BFD_B060, 0x06A4, 0x11D0, 0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E);
+    let dpchat = GUID(
+        0x5BFD_B060,
+        0x06A4,
+        0x11D0,
+        0x9C,
+        0x4F,
+        0x00,
+        0xA0,
+        0xC9,
+        0x05,
+        0x42,
+        0x5E,
+    );
+    let test_session_id = GUID(
+        0x5BFD_B060,
+        0x06A4,
+        0x11D0,
+        0x9C,
+        0x4F,
+        0x00,
+        0xA0,
+        0xC9,
+        0x05,
+        0x42,
+        0x5E,
+    );
 
-    let dprun_dir = std::env::current_dir()
-        .unwrap()
-        .join("../dprun/bin/debug");
+    let dprun_dir = std::env::current_dir().unwrap().join("../dprun/bin/debug");
 
     let use_sp = SPType::P2P;
 
@@ -54,8 +66,7 @@ fn main() {
 
     match use_sp {
         SPType::Local => {
-            let local_server = Arc::new(Mutex::new(
-                    LocalOnlyServer::make()));
+            let local_server = Arc::new(Mutex::new(LocalOnlyServer::make()));
 
             host_options = host_options
                 .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
@@ -67,7 +78,7 @@ fn main() {
                 .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
                 .named_address_part("INetPort", DPAddressValue::Number(2198))
                 .named_address_part("SelfID", DPAddressValue::Binary(join_guid.to_vec()));
-        },
+        }
         SPType::P2P => {
             host_options = host_options
                 .service_provider_handler(Box::new(Libp2pSP::new()))
@@ -79,7 +90,7 @@ fn main() {
                 .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
                 .named_address_part("INetPort", DPAddressValue::Number(2198))
                 .named_address_part("SelfID", DPAddressValue::Binary(join_guid.to_vec()));
-        },
+        }
         SPType::TCPIP => {
             host_options = host_options
                 .named_service_provider("TCPIP")
@@ -101,10 +112,10 @@ fn main() {
     println!("join CLI: {}", join.command());
 
     let host_instance = host.start();
-    let join_instance = Delay::new(Instant::now() + Duration::from_secs(3))
-        .then(|_| join.start());
+    let join_instance = Delay::new(Instant::now() + Duration::from_secs(3)).then(|_| join.start());
 
-    let future = host_instance.join(join_instance)
+    let future = host_instance
+        .join(join_instance)
         .map(|_| ())
         .map_err(|e| eprintln!("error: {:?}", e));
 

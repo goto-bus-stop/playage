@@ -1,14 +1,14 @@
+use crate::inspect::print_network_message;
+use crate::structs::*;
+use bytes::{BigEndian, BufMut, ByteOrder, Bytes, BytesMut};
+use futures::sync::mpsc::{channel, Receiver, SendError, Sender};
 use std::mem;
-use std::net::{SocketAddr, Ipv4Addr, IpAddr};
+use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, Mutex};
-use futures::sync::mpsc::{channel, Sender, Receiver, SendError};
-use tokio::io::Result;
 use tokio::codec::{Framed, LengthDelimitedCodec};
+use tokio::io::Result;
 use tokio::net::{TcpListener, TcpStream};
 use tokio::prelude::*;
-use bytes::{Bytes, BytesMut, BufMut, ByteOrder, BigEndian};
-use crate::structs::*;
-use crate::inspect::print_network_message;
 
 #[derive(Debug)]
 pub enum ControlMessage {
@@ -41,9 +41,19 @@ impl Future for SPFuture {
 
 /// Trait for custom Service Provider implementations.
 pub trait ServiceProvider: Sync + Send {
-    fn enum_sessions(&mut self, controller: AppController, id: u32, data: EnumSessionsData) -> SPFuture;
+    fn enum_sessions(
+        &mut self,
+        controller: AppController,
+        id: u32,
+        data: EnumSessionsData,
+    ) -> SPFuture;
     fn open(&mut self, controller: AppController, id: u32, data: OpenData) -> SPFuture;
-    fn create_player(&mut self, controller: AppController, id: u32, data: CreatePlayerData) -> SPFuture;
+    fn create_player(
+        &mut self,
+        controller: AppController,
+        id: u32,
+        data: CreatePlayerData,
+    ) -> SPFuture;
     fn reply(&mut self, controller: AppController, id: u32, data: ReplyData) -> SPFuture;
     fn send(&mut self, controller: AppController, id: u32, data: SendData) -> SPFuture;
 }
@@ -62,9 +72,7 @@ impl ServerController {
         // TODO figure out appropriate buffer size
         // May only need to be oneshot
         let (sender, receiver) = channel(5);
-        let controller = ServerController {
-            sender,
-        };
+        let controller = ServerController { sender };
 
         (controller, receiver)
     }
@@ -100,93 +108,132 @@ impl AppController {
         let msg_id = self.next_message_id;
         self.next_message_id += 1;
         println!("[AppController::send] {}", msg_id);
-        self.sender.start_send(AppMessage::Send(msg_id as u32, std::u32::MAX, data))
+        self.sender
+            .start_send(AppMessage::Send(msg_id as u32, std::u32::MAX, data))
     }
 
-    pub fn reply(&mut self, id: u32, data: Vec<u8>) -> futures::StartSend<AppMessage, SendError<AppMessage>> {
+    pub fn reply(
+        &mut self,
+        id: u32,
+        data: Vec<u8>,
+    ) -> futures::StartSend<AppMessage, SendError<AppMessage>> {
         let msg_id = self.next_message_id;
         self.next_message_id += 1;
-        self.sender.start_send(AppMessage::Send(msg_id as u32, id, data))
+        self.sender
+            .start_send(AppMessage::Send(msg_id as u32, id, data))
     }
 }
 
-fn handle_message(service_provider: Arc<Mutex<Box<ServiceProvider>>>, controller: &mut AppController, id: u32, method: &[u8], message: &[u8]) -> impl Future<Item = (), Error = std::io::Error> {
+fn handle_message(
+    service_provider: Arc<Mutex<Box<ServiceProvider>>>,
+    controller: &mut AppController,
+    id: u32,
+    method: &[u8],
+    message: &[u8],
+) -> impl Future<Item = (), Error = std::io::Error> {
     match method {
         b"enum" => {
             let enum_sessions = EnumSessionsData {
                 message: message.to_vec(),
             };
             print_network_message(Bytes::from(&enum_sessions.message[..]));
-            service_provider.lock().unwrap()
+            service_provider
+                .lock()
+                .unwrap()
                 .enum_sessions(controller.clone(), id, enum_sessions)
-        },
+        }
         b"open" => {
             let open = OpenData::parse(message);
-            service_provider.lock().unwrap()
+            service_provider
+                .lock()
+                .unwrap()
                 .open(controller.clone(), id, open)
-        },
+        }
         b"crpl" => {
             let create_player = CreatePlayerData::parse(message);
-            service_provider.lock().unwrap()
+            service_provider
+                .lock()
+                .unwrap()
                 .create_player(controller.clone(), id, create_player)
-        },
+        }
         b"repl" => {
             let reply = ReplyData::parse(message);
             print_network_message(Bytes::from(&reply.message[..]));
-            service_provider.lock().unwrap()
+            service_provider
+                .lock()
+                .unwrap()
                 .reply(controller.clone(), id, reply)
-        },
+        }
         b"send" => {
             let send = SendData::parse(message);
             print_network_message(Bytes::from(&send.message[..]));
-            service_provider.lock().unwrap()
+            service_provider
+                .lock()
+                .unwrap()
                 .send(controller.clone(), id, send)
-        },
+        }
         method => {
-            println!("[HostServer::process_message] HostServer message: {} {:?}, {:?}", id, method, message);
+            println!(
+                "[HostServer::process_message] HostServer message: {} {:?}, {:?}",
+                id, method, message
+            );
             SPFuture::new(Box::new(future::finished(())))
         }
     }
 }
 
-fn handle_connection(service_provider: Arc<Mutex<Box<ServiceProvider>>>, sock: TcpStream) -> Result<()> {
+fn handle_connection(
+    service_provider: Arc<Mutex<Box<ServiceProvider>>>,
+    sock: TcpStream,
+) -> Result<()> {
     sock.set_nodelay(true)?;
     let (writer, reader) = Framed::new(sock, LengthDelimitedCodec::new()).split();
     let (mut app_controller, receiver) = AppController::create();
     println!("[handle_connection] Connection incoming");
 
-    let read_future = reader.for_each(move |mut message| {
-        let id = BigEndian::read_u32(&message.split_to(4));
-        let _reply_id = BigEndian::read_u32(&message.split_to(4));
-        let method = message.split_to(4);
-        handle_message(Arc::clone(&service_provider), &mut app_controller, id, &method, &message)
-    }).then(|result| {
-        println!("[handle_connection] Connection finished");
-        result
-    }).map_err(|e| {
-        eprintln!("[handle_connection] Request error: {:?}", e);
-    });
+    let read_future = reader
+        .for_each(move |mut message| {
+            let id = BigEndian::read_u32(&message.split_to(4));
+            let _reply_id = BigEndian::read_u32(&message.split_to(4));
+            let method = message.split_to(4);
+            handle_message(
+                Arc::clone(&service_provider),
+                &mut app_controller,
+                id,
+                &method,
+                &message,
+            )
+        })
+        .then(|result| {
+            println!("[handle_connection] Connection finished");
+            result
+        })
+        .map_err(|e| {
+            eprintln!("[handle_connection] Request error: {:?}", e);
+        });
 
-    let app_messages = receiver.map_err(|_| {
-        std::io::Error::new(std::io::ErrorKind::Other, "this should never happen")
-    }).map(|app_message| match app_message {
-        AppMessage::Send(msg_id, reply_to_id, data) => {
-            println!("[handle_connection] Send message {} in reply to {}", msg_id, reply_to_id);
-            let mut message = BytesMut::with_capacity(data.len() + 12);
-            message.put_u32_be(msg_id);
-            message.put_u32_be(reply_to_id);
-            message.put_u32_be(0);
-            message.put(&data);
-            message.freeze()
-        },
-    });
+    let app_messages = receiver
+        .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "this should never happen"))
+        .map(|app_message| match app_message {
+            AppMessage::Send(msg_id, reply_to_id, data) => {
+                println!(
+                    "[handle_connection] Send message {} in reply to {}",
+                    msg_id, reply_to_id
+                );
+                let mut message = BytesMut::with_capacity(data.len() + 12);
+                message.put_u32_be(msg_id);
+                message.put_u32_be(reply_to_id);
+                message.put_u32_be(0);
+                message.put(&data);
+                message.freeze()
+            }
+        });
 
     let write_future = writer.send_all(app_messages).map_err(|e| {
         eprintln!("[handle_connection] Send app message error: {:?}", e);
     });
 
-    let future = read_future.join(write_future)
-        .map(|_| ());
+    let future = read_future.join(write_future).map(|_| ());
 
     tokio::spawn(future);
     Ok(())
@@ -218,17 +265,27 @@ impl HostServer {
         }
     }
 
-    pub fn start(self) -> Result<(impl Future<Item = (), Error = std::io::Error>, ServerController)> {
-        println!("[HostServer::start] Starting HostServer on {:?}", self.address);
+    pub fn start(
+        self,
+    ) -> Result<(
+        impl Future<Item = (), Error = std::io::Error>,
+        ServerController,
+    )> {
+        println!(
+            "[HostServer::start] Starting HostServer on {:?}",
+            self.address
+        );
         let client = TcpListener::bind(&self.address)?;
 
         let service_provider = Arc::new(Mutex::new(self.service_provider));
         let server_controller = self.controller.clone();
-        let control_messages = self.receiver
+        let control_messages = self
+            .receiver
             .map(EventType::Control)
             .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Control stream ended"));
 
-        let server = client.incoming()
+        let server = client
+            .incoming()
             .map(EventType::Socket)
             .select(control_messages)
             .map(|message| {

@@ -1,6 +1,6 @@
-use std::mem;
-use bytes::{Bytes, ByteOrder, LittleEndian};
 use crate::structs::GUID;
+use bytes::{ByteOrder, Bytes, LittleEndian};
+use std::mem;
 
 fn read_guid(slice: &[u8]) -> GUID {
     let mut guid = [0; 16];
@@ -51,20 +51,20 @@ fn parse_cmd(cmd: u16, mut message: Bytes) -> Command {
             let _name_offset = LittleEndian::read_u32(&message.split_to(4));
             let name = String::from_utf8_lossy(&message);
             Command::EnumSessionsReply(name.to_string(), guid)
-        },
+        }
         0x02 => {
             let guid = read_guid(&message.split_to(16));
             let flags = LittleEndian::read_u32(&message.split_to(4));
             Command::EnumSessions(guid, flags)
-        },
+        }
         0x05 => {
             let flags = LittleEndian::read_u32(&message.split_to(4));
             Command::RequestPlayerId(flags)
-        },
+        }
         0x07 => {
             let new_id = LittleEndian::read_u32(&message.split_to(4));
             Command::RequestPlayerReply(new_id)
-        },
+        }
         0x08 => {
             message.advance(20);
             message.advance(8);
@@ -73,30 +73,28 @@ fn parse_cmd(cmd: u16, mut message: Bytes) -> Command {
             message.advance(8 * 4);
             let name = String::from_utf8_lossy(&message[0..name_len]);
             Command::CreatePlayer(id, name.to_string())
-        },
+        }
         0x0b => {
             message.advance(4);
             let id = LittleEndian::read_u32(&message.split_to(4));
             Command::DeletePlayer(id)
-        },
+        }
         0x13 => {
             let to = LittleEndian::read_u32(&message.split_to(4));
             let new_player = LittleEndian::read_u32(&message.split_to(4));
             Command::AddForwardRequest(to, new_player)
-        },
+        }
         0x16 => {
             let from = LittleEndian::read_u32(&message.split_to(4));
             let ticks = LittleEndian::read_u32(&message.split_to(4));
             Command::Ping(from, ticks)
-        },
+        }
         0x17 => {
             let from = LittleEndian::read_u32(&message.split_to(4));
             let ticks = LittleEndian::read_u32(&message.split_to(4));
             Command::PingReply(from, ticks)
-        },
-        0x29 => {
-            Command::SuperEnumPlayersReply
-        },
+        }
+        0x29 => Command::SuperEnumPlayersReply,
         0x30 => {
             message.advance(16);
             let index = LittleEndian::read_u32(&message.split_to(4));
@@ -108,7 +106,7 @@ fn parse_cmd(cmd: u16, mut message: Bytes) -> Command {
             } else {
                 Command::PacketizedData(index, total)
             }
-        },
+        }
         0x31 => Command::PacketizedAck,
         _ => Command::Other(message.to_vec()),
     }

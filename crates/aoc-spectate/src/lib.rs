@@ -1,7 +1,7 @@
+use std::io::{Result, Write};
+use std::net::SocketAddr;
 use tokio::net::TcpStream;
 use tokio::prelude::*;
-use std::io::{Write, Result};
-use std::net::SocketAddr;
 
 #[derive(Debug, Clone)]
 pub struct SpectateHeader {
@@ -59,14 +59,17 @@ impl SpectateSession {
         stream.and_then(move |stream| Self::connect_stream(Box::new(stream)))
     }
 
-    pub fn connect_stream(stream: Box<dyn AsyncRead>) -> impl Future<Item = SpectateSession, Error = std::io::Error> {
+    pub fn connect_stream(
+        stream: Box<dyn AsyncRead>,
+    ) -> impl Future<Item = SpectateSession, Error = std::io::Error> {
         let header = vec![0; 256];
 
         tokio::io::read_exact(stream, header).and_then(move |(stream, header)| {
-                future::result(SpectateHeader::parse(&header)).map(move |header| {
-                    SpectateSession { header, source: stream }
-                })
+            future::result(SpectateHeader::parse(&header)).map(move |header| SpectateSession {
+                header,
+                source: stream,
             })
+        })
     }
 }
 

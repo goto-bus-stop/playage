@@ -1,22 +1,33 @@
 use bytes::Buf;
-use std::mem;
-use std::fmt::{Formatter, Debug, Display, Result as FormatResult};
+use std::fmt::{Debug, Display, Formatter, Result as FormatResult};
 use std::io::Cursor;
+use std::mem;
 
 pub type DPID = i32;
 
 /// GUID structure, for identifying DirectPlay interfaces, applications, and address types.
 #[derive(Clone, Copy, PartialEq, Eq, Hash)]
-pub struct GUID(pub u32, pub u16, pub u16, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8, pub u8);
+pub struct GUID(
+    pub u32,
+    pub u16,
+    pub u16,
+    pub u8,
+    pub u8,
+    pub u8,
+    pub u8,
+    pub u8,
+    pub u8,
+    pub u8,
+    pub u8,
+);
 
 impl Display for GUID {
     fn fmt(&self, f: &mut Formatter) -> FormatResult {
-        write!(f, "{{{:08X?}-{:04X?}-{:04x?}-{:02X?}{:02X?}-{:02X?}{:02X?}{:02X?}{:02X?}{:02X?}{:02X?}}}",
-               self.0,
-               self.1,
-               self.2,
-               self.3, self.4,
-               self.5, self.6, self.7, self.8, self.9, self.10)
+        write!(
+            f,
+            "{{{:08X?}-{:04X?}-{:04x?}-{:02X?}{:02X?}-{:02X?}{:02X?}{:02X?}{:02X?}{:02X?}{:02X?}}}",
+            self.0, self.1, self.2, self.3, self.4, self.5, self.6, self.7, self.8, self.9, self.10
+        )
     }
 }
 
@@ -40,9 +51,9 @@ fn read_guid(read: &mut Buf) -> GUID {
 #[derive(Debug)]
 #[repr(C)]
 pub struct CreatePlayerData {
-  // pub player_id: DPID,
-  pub player_guid: GUID,
-  pub flags: i32,
+    // pub player_id: DPID,
+    pub player_guid: GUID,
+    pub flags: i32,
 }
 
 impl CreatePlayerData {
@@ -65,16 +76,16 @@ impl CreatePlayerData {
 #[derive(Debug)]
 #[repr(C)]
 pub struct EnumSessionsData {
-  pub message: Vec<u8>,
+    pub message: Vec<u8>,
 }
 
 #[derive(Debug)]
 #[repr(C)]
 pub struct OpenData {
-  pub create: bool,
-  pub return_status: bool,
-  pub open_flags: i32,
-  pub session_flags: i32,
+    pub create: bool,
+    pub return_status: bool,
+    pub open_flags: i32,
+    pub session_flags: i32,
 }
 
 impl OpenData {

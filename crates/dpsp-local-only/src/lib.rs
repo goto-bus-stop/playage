@@ -1,14 +1,7 @@
-use tokio::prelude::*;
-use dprun::{
-    structs::*,
-    DPID,
-    GUID,
-    ServiceProvider,
-    AppController,
-    SPFuture,
-};
+use dprun::{structs::*, AppController, SPFuture, ServiceProvider, DPID, GUID};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
+use tokio::prelude::*;
 
 const DPLAYI_PLAYER_SYSPLAYER: i32 = 1;
 const DPLAYI_PLAYER_NAMESRVR: i32 = 2;
@@ -35,7 +28,10 @@ impl LocalOnlyServer {
 
     pub fn create_player(&mut self, id: GUID, controller: AppController) {
         self.players.insert(id, controller);
-        println!("Current players: {:?}", self.players.keys().collect::<Vec<&GUID>>());
+        println!(
+            "Current players: {:?}",
+            self.players.keys().collect::<Vec<&GUID>>()
+        );
     }
 
     pub fn enum_sessions(&mut self, message: &[u8], requester: AppController) {
@@ -50,7 +46,7 @@ impl LocalOnlyServer {
         match self.players.get_mut(&id) {
             Some(player) => {
                 player.send(data.to_vec());
-            },
+            }
             None => {
                 self.enumers.values_mut().for_each(|player| {
                     player.send(data.to_vec());
@@ -65,11 +61,11 @@ impl LocalOnlyServer {
                 self.players.get_mut(id).map(|player| {
                     player.send(data.to_vec());
                 });
-            },
+            }
             None => match self.name_server {
                 Some(ref mut name_server) => {
                     name_server.send(data.to_vec());
-                },
+                }
                 None => panic!("Tried to send message to nonexistent name server"),
             },
         }
@@ -91,9 +87,16 @@ fn immediately() -> SPFuture {
 }
 
 impl ServiceProvider for LocalOnlySP {
-    fn enum_sessions(&mut self, controller: AppController, _id: u32, data: EnumSessionsData) -> SPFuture {
+    fn enum_sessions(
+        &mut self,
+        controller: AppController,
+        _id: u32,
+        data: EnumSessionsData,
+    ) -> SPFuture {
         // println!("[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}", data);
-        self.server.lock().unwrap()
+        self.server
+            .lock()
+            .unwrap()
             .enum_sessions(&data.message, controller);
         immediately()
     }
@@ -103,13 +106,25 @@ impl ServiceProvider for LocalOnlySP {
         immediately()
     }
 
-    fn create_player(&mut self, controller: AppController, _id: u32, data: CreatePlayerData) -> SPFuture {
-        println!("[LocalOnlySP::create_player] Got CreatePlayer message: {:?}", data);
+    fn create_player(
+        &mut self,
+        controller: AppController,
+        _id: u32,
+        data: CreatePlayerData,
+    ) -> SPFuture {
+        println!(
+            "[LocalOnlySP::create_player] Got CreatePlayer message: {:?}",
+            data
+        );
         if data.flags & DPLAYI_PLAYER_NAMESRVR != 0 {
-            self.server.lock().unwrap()
+            self.server
+                .lock()
+                .unwrap()
                 .set_name_server(data.player_guid, controller)
         } else {
-            self.server.lock().unwrap()
+            self.server
+                .lock()
+                .unwrap()
                 .create_player(data.player_guid, controller)
         }
         immediately()
@@ -117,14 +132,18 @@ impl ServiceProvider for LocalOnlySP {
 
     fn reply(&mut self, controller: AppController, _id: u32, data: ReplyData) -> SPFuture {
         // println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
-        self.server.lock().unwrap()
+        self.server
+            .lock()
+            .unwrap()
             .reply(data.reply_to, &data.message);
         immediately()
     }
 
     fn send(&mut self, controller: AppController, id: u32, data: SendData) -> SPFuture {
         // println!("[LocalOnlySP::send] Got Send message: {:?}", data);
-        self.server.lock().unwrap()
+        self.server
+            .lock()
+            .unwrap()
             .send(data.receiver_id, &data.message);
         immediately()
     }

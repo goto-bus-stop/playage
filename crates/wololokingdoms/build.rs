@@ -1,6 +1,6 @@
-use std::{env, path::PathBuf};
-use cmake::Config;
 use bindgen::Builder;
+use cmake::Config;
+use std::{env, path::PathBuf};
 
 fn main() {
     let dst = Config::new("../../third_party/wololokingdoms/libwololokingdoms")
@@ -8,7 +8,10 @@ fn main() {
         .build_target("all")
         .build();
 
-    println!("cargo:rustc-link-search=native={}/build/third_party/genieutils", dst.display());
+    println!(
+        "cargo:rustc-link-search=native={}/build/third_party/genieutils",
+        dst.display()
+    );
     println!("cargo:rustc-link-search=native={}/build", dst.display());
     println!("cargo:rustc-link-lib=static=wololokingdoms");
     println!("cargo:rustc-link-lib=static=genieutils");

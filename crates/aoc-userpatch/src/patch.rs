@@ -5,12 +5,18 @@ struct Injection(pub u32, pub &'static str);
 
 /// Decode a hexadecimal string to a list of byte values.
 fn decode_hex(hexa: &str) -> Vec<u8> {
-    assert_eq!(hexa.len() % 2, 0, "hex string must have length divisible by 2");
+    assert_eq!(
+        hexa.len() % 2,
+        0,
+        "hex string must have length divisible by 2"
+    );
     let mut bytes = Vec::with_capacity(hexa.len() / 2);
     for c in hexa.as_bytes().chunks(2) {
-        let high = char::from(c[0]).to_digit(16)
+        let high = char::from(c[0])
+            .to_digit(16)
             .expect("expected only hexadecimal characters");
-        let low = char::from(c[1]).to_digit(16)
+        let low = char::from(c[1])
+            .to_digit(16)
             .expect("expected only hexadecimal characters");
         bytes.push((high * 16 + low) as u8);
     }
@@ -50,16 +56,20 @@ mod tests {
     fn apply_patch_test() {
         let mut buffer = vec![0u8; 256];
         apply_patch(&mut buffer, 8, &[1u8; 8]);
-        assert_eq!(&buffer[0..24], &[
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            1u8, 1u8, 1u8, 1u8, 1u8, 1u8, 1u8, 1u8,
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        ]);
+        assert_eq!(
+            &buffer[0..24],
+            &[
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 1u8, 1u8, 1u8, 1u8, 1u8, 1u8, 1u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            ]
+        );
         apply_patch(&mut buffer, 10, &[2u8; 4]);
-        assert_eq!(&buffer[0..24], &[
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-            1u8, 1u8, 2u8, 2u8, 2u8, 2u8, 1u8, 1u8,
-            0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
-        ]);
+        assert_eq!(
+            &buffer[0..24],
+            &[
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 1u8, 1u8, 2u8, 2u8, 2u8, 2u8, 1u8, 1u8,
+                0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
+            ]
+        );
     }
 }

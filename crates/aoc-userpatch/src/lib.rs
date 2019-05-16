@@ -1,9 +1,9 @@
 mod installer;
 mod patch;
 
-use std::io::Result;
-use std::fs::File;
 use installer::extract_installer;
+use std::fs::File;
+use std::io::Result;
 
 pub use patch::install_into;
 
@@ -76,7 +76,6 @@ impl ToString for InstallOptions {
             self.widescreen_command_bar,
             self.windowed_mode,
             self.upnp,
-
             self.alternate_red,
             self.alternate_purple,
             self.alternate_gray,
@@ -86,7 +85,6 @@ impl ToString for InstallOptions {
             self.precision_scrolling,
             self.shift_group_append,
             self.keydown_hotkeys,
-
             self.savegame_format,
             self.multiple_queue,
             self.original_patrol_delay,
@@ -98,7 +96,6 @@ impl ToString for InstallOptions {
             self.touch_screen_control,
             self.store_spec_addresses,
             self.normal_mouse,
-
             self.delink_volume,
             self.wine_chatbox,
             self.low_quality_environment,
@@ -117,7 +114,8 @@ impl ToString for InstallOptions {
             self.spec_research_events,
         ];
 
-        let flags = flag_list.iter()
+        let flags = flag_list
+            .iter()
             .map(|value| if *value { '1' } else { '0' })
             .collect::<String>();
 
