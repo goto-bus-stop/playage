@@ -81,12 +81,12 @@ fn main() {
         }
         SPType::P2P => {
             host_options = host_options
-                .service_provider_handler(Box::new(Libp2pSP::new()))
+                .service_provider_handler(Box::new(Libp2pSP::default()))
                 .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
                 .named_address_part("INetPort", DPAddressValue::Number(2197))
                 .named_address_part("SelfID", DPAddressValue::Binary(host_guid.to_vec()));
             join_options = join_options
-                .service_provider_handler(Box::new(Libp2pSP::new()))
+                .service_provider_handler(Box::new(Libp2pSP::default()))
                 .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
                 .named_address_part("INetPort", DPAddressValue::Number(2198))
                 .named_address_part("SelfID", DPAddressValue::Binary(join_guid.to_vec()));

@@ -2,7 +2,6 @@ use crate::inspect::print_network_message;
 use crate::structs::*;
 use bytes::{BigEndian, BufMut, ByteOrder, Bytes, BytesMut};
 use futures::sync::mpsc::{channel, Receiver, SendError, Sender};
-use std::mem;
 use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 use std::sync::{Arc, Mutex};
 use tokio::codec::{Framed, LengthDelimitedCodec};
@@ -97,7 +96,7 @@ impl AppController {
         // TODO figure out appropriate buffer size
         let (sender, receiver) = channel(5);
         let controller = AppController {
-            sender: sender,
+            sender,
             next_message_id: 0,
         };
 

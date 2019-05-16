@@ -1,3 +1,4 @@
+#![allow(clippy::unreadable_literal)]
 use std::str;
 
 /// Describes a patch as an offset and a hexadecimal string.

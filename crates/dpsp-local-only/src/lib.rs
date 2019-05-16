@@ -58,13 +58,13 @@ impl LocalOnlyServer {
     fn send(&mut self, to_player_id: Option<GUID>, data: &[u8]) {
         match to_player_id {
             Some(ref id) => {
-                self.players.get_mut(id).map(|player| {
-                    player.send(data.to_vec());
-                });
+                if let Some(player) = self.players.get_mut(id) {
+                    player.send(data.to_vec()).unwrap();
+                }
             }
             None => match self.name_server {
                 Some(ref mut name_server) => {
-                    name_server.send(data.to_vec());
+                    name_server.send(data.to_vec()).unwrap();
                 }
                 None => panic!("Tried to send message to nonexistent name server"),
             },

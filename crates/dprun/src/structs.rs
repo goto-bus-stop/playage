@@ -157,7 +157,7 @@ impl ReplyData {
         Self {
             reply_to,
             name_server_id,
-            message: message,
+            message,
         }
     }
 }

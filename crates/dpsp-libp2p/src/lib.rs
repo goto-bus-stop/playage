@@ -65,14 +65,16 @@ pub struct Libp2pSP {
     // swarm: Option<Swarm>,
 }
 
-impl Libp2pSP {
-    pub fn new() -> Self {
+impl Default for Libp2pSP {
+    fn default() -> Self {
         Self {
             local_key: Keypair::generate_ed25519(),
             address: None,
         }
     }
+}
 
+impl Libp2pSP {
     pub fn with_address(self, address: Multiaddr) -> Self {
         Self {
             address: Some(address),
