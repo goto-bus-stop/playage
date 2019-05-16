@@ -135,6 +135,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Patch>> {
                         let addr = stack_args[0];
                         latest_named = read_c_str(exe, addr - DATA_BASE_ADDRESS);
                     }
+                    _ => {}
                 }
                 stack_args.clear();
             }
