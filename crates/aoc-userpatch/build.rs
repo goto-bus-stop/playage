@@ -1,3 +1,4 @@
+use encoding_rs::UTF_16LE;
 use std::{
     env,
     fs::{self, File},
@@ -5,7 +6,6 @@ use std::{
     path::{Path, PathBuf},
     process::Command,
 };
-use encoding_rs::UTF_16LE;
 
 /// The location of the PatchData hex string overload in memory space.
 const HEX_PATCH_ADDRESS: u32 = 0x00402750;
@@ -70,10 +70,7 @@ fn to_hex(bytes: &[u8]) -> String {
 
     bytes
         .iter()
-        .flat_map(|byte| vec![
-            to_hex_char((byte & 0xF0) >> 4),
-            to_hex_char(byte & 0x0F),
-        ])
+        .flat_map(|byte| vec![to_hex_char((byte & 0xF0) >> 4), to_hex_char(byte & 0x0F)])
         .collect::<String>()
 }
 
@@ -92,49 +89,52 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Patch>> {
         match op.read::<u8>(0) {
             ASM_CALL => {
                 let (target, _) = (va + 5).overflowing_add(op.read::<u32>(1));
-                if target == HEX_PATCH_ADDRESS {
-                    stack_args.reverse();
-                    let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
-                    let addr = stack_args[0];
-                    assert!(is_hex_string(&patch), "unexpected non-hex string");
-                    injections.push(Patch::Hex(addr, patch));
-                }
-                if target == BYTE_PATCH_ADDRESS {
-                    stack_args.reverse();
-                    let start = (stack_args[1] - DATA_BASE_ADDRESS) as usize;
-                    let patch = &exe[start..start + stack_args[2] as usize];
-                    let addr = stack_args[0];
-                    injections.push(Patch::Hex(stack_args[1] - DATA_BASE_ADDRESS, to_hex(patch)));
-                }
-                if target == NAMED_HEX_PATCH_ADDRESS {
-                    if !latest_named.is_empty() {
-                        injections.push(Patch::Header(latest_named.clone()));
+                match target {
+                    HEX_PATCH_ADDRESS => {
+                        stack_args.reverse();
+                        let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
+                        let addr = stack_args[0];
+                        assert!(is_hex_string(&patch), "unexpected non-hex string");
+                        injections.push(Patch::Hex(addr, patch));
                     }
-                    stack_args.reverse();
-                    let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
-                    let addr = stack_args[0];
-                    assert!(is_hex_string(&patch), "unexpected non-hex string");
-                    injections.push(Patch::Hex(addr, patch));
-                }
-                if target == JMP_PATCH_ADDRESS {
-                    stack_args.reverse();
-                    let addr = stack_args[0];
-                    let to_addr = stack_args[1];
-                    injections.push(Patch::Jmp(addr, to_addr));
-                }
-                if target == STRING_CONSTRUCTOR_ADDRESS16 && stack_args.len() > 0 {
-                    stack_args.reverse();
-                    let addr = stack_args[0];
-                    if addr > DATA_BASE_ADDRESS {
-                        latest_named = read_utf16_str(exe, addr - DATA_BASE_ADDRESS);
-                    } else {
-                        latest_named = String::new();
+                    BYTE_PATCH_ADDRESS => {
+                        stack_args.reverse();
+                        let start = (stack_args[1] - DATA_BASE_ADDRESS) as usize;
+                        let patch = &exe[start..start + stack_args[2] as usize];
+                        let addr = stack_args[0];
+                        injections
+                            .push(Patch::Hex(stack_args[1] - DATA_BASE_ADDRESS, to_hex(patch)));
                     }
-                }
-                if target == STRING_CONSTRUCTOR_ADDRESS {
-                    stack_args.reverse();
-                    let addr = stack_args[0];
-                    latest_named = read_c_str(exe, addr - DATA_BASE_ADDRESS);
+                    NAMED_HEX_PATCH_ADDRESS => {
+                        if !latest_named.is_empty() {
+                            injections.push(Patch::Header(latest_named.clone()));
+                        }
+                        stack_args.reverse();
+                        let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
+                        let addr = stack_args[0];
+                        assert!(is_hex_string(&patch), "unexpected non-hex string");
+                        injections.push(Patch::Hex(addr, patch));
+                    }
+                    JMP_PATCH_ADDRESS => {
+                        stack_args.reverse();
+                        let addr = stack_args[0];
+                        let to_addr = stack_args[1];
+                        injections.push(Patch::Jmp(addr, to_addr));
+                    }
+                    STRING_CONSTRUCTOR_ADDRESS16 if stack_args.len() > 0 => {
+                        stack_args.reverse();
+                        let addr = stack_args[0];
+                        if addr > DATA_BASE_ADDRESS {
+                            latest_named = read_utf16_str(exe, addr - DATA_BASE_ADDRESS);
+                        } else {
+                            latest_named = String::new();
+                        }
+                    }
+                    STRING_CONSTRUCTOR_ADDRESS => {
+                        stack_args.reverse();
+                        let addr = stack_args[0];
+                        latest_named = read_c_str(exe, addr - DATA_BASE_ADDRESS);
+                    }
                 }
                 stack_args.clear();
             }
@@ -152,12 +152,18 @@ fn upx_unpack(packed_bytes: &[u8], tempdir: &Path) -> Result<Vec<u8>> {
     fs::write(tempdir.join("packed.exe"), packed_bytes)?;
     let status = Command::new("upx")
         .arg("-d")
-        .arg(format!("-o{}", tempdir.join("unpacked.exe").to_str().unwrap()))
+        .arg(format!(
+            "-o{}",
+            tempdir.join("unpacked.exe").to_str().unwrap()
+        ))
         .arg(tempdir.join("packed.exe"))
         .status()
         .expect("could not run upx");
     if !status.success() {
-        return Err(std::io::Error::new(std::io::ErrorKind::Other, "upx exited nonzero"));
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "upx exited nonzero",
+        ));
     }
     let result = fs::read(tempdir.join("unpacked.exe"))?;
     fs::remove_file(tempdir.join("packed.exe"))?;
@@ -182,7 +188,12 @@ fn main() -> Result<()> {
         match inject {
             Patch::Header(name) => write!(f, "  // {}\n", name)?,
             Patch::Hex(addr, patch) => write!(f, "  Injection({:#x}, \"{}\"),\n", addr, patch)?,
-            Patch::Jmp(addr, to_addr) => write!(f, "  Injection({:#x}, \"E9{:08X}\"),\n", addr, to_addr.overflowing_sub(addr + 5).0.to_be())?,
+            Patch::Jmp(addr, to_addr) => write!(
+                f,
+                "  Injection({:#x}, \"E9{:08X}\"),\n",
+                addr,
+                to_addr.overflowing_sub(addr + 5).0.to_be()
+            )?,
         }
     }
     write!(f, "]")?;
