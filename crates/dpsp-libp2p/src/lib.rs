@@ -1,8 +1,8 @@
 use dprun::{structs, AppController, SPFuture, ServiceProvider};
 use futures::{future::poll_fn, future::FutureResult, prelude::*};
 use libp2p::{
-    core::UpgradeInfo, mdns::Mdns, secio::SecioKeyPair, InboundUpgrade, Multiaddr, OutboundUpgrade,
-    Swarm, Transport,
+    core::upgrade, core::UpgradeInfo, identity::Keypair, mdns::Mdns, secio::SecioConfig,
+    InboundUpgrade, Multiaddr, OutboundUpgrade, Swarm, Transport,
 };
 use tokio::prelude::*;
 
@@ -41,7 +41,7 @@ where
     type Error = EnumSessionsError;
     type Future = FutureResult<Self::Output, Self::Error>;
 
-    fn upgrade_inbound(self, i: C, _: Self::Info) -> Self::Future {
+    fn upgrade_inbound(self, i: upgrade::Negotiated<C>, _: Self::Info) -> Self::Future {
         future::ok(())
     }
 }
@@ -54,13 +54,13 @@ where
     type Error = EnumSessionsError;
     type Future = FutureResult<Self::Output, Self::Error>;
 
-    fn upgrade_outbound(self, i: C, _: Self::Info) -> Self::Future {
+    fn upgrade_outbound(self, i: upgrade::Negotiated<C>, _: Self::Info) -> Self::Future {
         future::ok(())
     }
 }
 
 pub struct Libp2pSP {
-    local_key: SecioKeyPair,
+    local_key: Keypair,
     address: Option<Multiaddr>,
     // swarm: Option<Swarm>,
 }
@@ -68,7 +68,7 @@ pub struct Libp2pSP {
 impl Libp2pSP {
     pub fn new() -> Self {
         Self {
-            local_key: SecioKeyPair::ed25519_generated().unwrap(),
+            local_key: Keypair::generate_ed25519(),
             address: None,
         }
     }
@@ -100,7 +100,11 @@ impl ServiceProvider for Libp2pSP {
         let transport = libp2p::build_tcp_ws_secio_mplex_yamux(self.local_key.clone());
         // how to make this work?
         // .with_upgrade(EnumSessionsUpgrade);
-        let mut swarm = Swarm::new(transport, Mdns::new().unwrap(), self.local_key.to_peer_id());
+        let mut swarm = Swarm::new(
+            transport,
+            Mdns::new().unwrap(),
+            self.local_key.public().into_peer_id(),
+        );
 
         let addr = Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse().unwrap()).unwrap();
 
