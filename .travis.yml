@@ -5,10 +5,12 @@ rust:
 
 addons:
   apt:
+    update: true
     sources:
       - ubuntu-toolchain-r-test
     packages:
       - g++-8
+      - upx-ucl
 
 env:
   - CC=gcc-8 CXX=g++-8
