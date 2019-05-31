@@ -1,6 +1,6 @@
 #![allow(clippy::unreadable_literal)]
-use std::{fmt, str};
 use lazy_static::lazy_static;
+use std::{fmt, str};
 
 pub struct Feature {
     pub name: &'static str,
@@ -12,13 +12,21 @@ pub struct Feature {
 
 impl fmt::Debug for Feature {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Feature {{ \"{}\", optional: {:?}, affects_sync: {:?}, enabled: {:?} }}", self.name, self.optional, self.affects_sync, self.enabled)
+        write!(
+            f,
+            "Feature {{ \"{}\", optional: {:?}, affects_sync: {:?}, enabled: {:?} }}",
+            self.name, self.optional, self.affects_sync, self.enabled
+        )
     }
 }
 
 impl Feature {
     fn assert_optional(&self) {
-        assert!(self.optional, "cannot toggle non-optional feature \"{}\"", self.name);
+        assert!(
+            self.optional,
+            "cannot toggle non-optional feature \"{}\"",
+            self.name
+        );
     }
 
     pub fn enable(&mut self, enabled: bool) {

@@ -95,16 +95,14 @@ fn is_hex_string(string: &str) -> bool {
 fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
     let mut stack_args = vec![];
     let mut latest_named = String::new();
-    let mut features: Vec<Feature> = vec![
-        Feature {
-            name: "Pre-patch".to_string(),
-            optional: false,
-            enabled_by_default: true,
-            always_enabled: true,
-            affects_sync: false,
-            patches: vec![],
-        }
-    ];
+    let mut features: Vec<Feature> = vec![Feature {
+        name: "Pre-patch".to_string(),
+        optional: false,
+        enabled_by_default: true,
+        always_enabled: true,
+        affects_sync: false,
+        patches: vec![],
+    }];
 
     let push_patch = |features: &mut Vec<Feature>, patch| {
         if let Some(feature) = features.last_mut() {
@@ -130,7 +128,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                             patches: vec![],
                         });
                         latest_named.clear();
-                    },
+                    }
                     HEX_PATCH_ADDRESS => {
                         stack_args.reverse();
                         let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
@@ -143,7 +141,10 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         let start = (stack_args[1] - DATA_BASE_ADDRESS) as usize;
                         let patch = &exe[start..start + stack_args[2] as usize];
                         let addr = stack_args[0];
-                        push_patch(&mut features, Patch::Hex(stack_args[1] - DATA_BASE_ADDRESS, to_hex(patch)));
+                        push_patch(
+                            &mut features,
+                            Patch::Hex(stack_args[1] - DATA_BASE_ADDRESS, to_hex(patch)),
+                        );
                     }
                     NAMED_HEX_PATCH_ADDRESS => {
                         if !latest_named.is_empty() {
@@ -230,7 +231,9 @@ fn main() -> Result<()> {
         for inject in feature.patches {
             match inject {
                 Patch::Header(name) => write!(f, "    // {}\n", name)?,
-                Patch::Hex(addr, patch) => write!(f, "    Injection({:#x}, \"{}\"),\n", addr, patch)?,
+                Patch::Hex(addr, patch) => {
+                    write!(f, "    Injection({:#x}, \"{}\"),\n", addr, patch)?
+                }
                 Patch::Jmp(addr, to_addr) => write!(
                     f,
                     "    Injection({:#x}, \"E9{:08X}\"),\n",
