@@ -1,8 +1,38 @@
 #![allow(clippy::unreadable_literal)]
-use std::str;
+use std::{fmt, str};
+use lazy_static::lazy_static;
+
+pub struct Feature {
+    pub name: &'static str,
+    pub optional: bool,
+    pub affects_sync: bool,
+    enabled: bool,
+    patches: Vec<Injection>,
+}
+
+impl fmt::Debug for Feature {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "Feature {{ \"{}\", optional: {:?}, affects_sync: {:?}, enabled: {:?} }}", self.name, self.optional, self.affects_sync, self.enabled)
+    }
+}
+
+impl Feature {
+    fn assert_optional(&self) {
+        assert!(self.optional, "cannot toggle non-optional feature \"{}\"", self.name);
+    }
+
+    pub fn enable(&mut self, enabled: bool) {
+        self.assert_optional();
+        self.enabled = enabled;
+    }
+
+    pub fn enabled(&self) -> bool {
+        self.enabled
+    }
+}
 
 /// Describes a patch as an offset and a hexadecimal string.
-struct Injection(pub u32, pub &'static str);
+struct Injection(u32, &'static str);
 
 /// Decode a hexadecimal string to a list of byte values.
 fn decode_hex(hexa: &str) -> Vec<u8> {
@@ -30,15 +60,24 @@ fn apply_patch(buffer: &mut [u8], offset: usize, patch: &[u8]) {
     (&mut buffer[offset..end]).copy_from_slice(&patch);
 }
 
+lazy_static! {
+    static ref FEATURES: Vec<Feature> = include!(concat!(env!("OUT_DIR"), "/injections.rs"));
+}
+
+pub fn get_available_features() -> &'static [Feature] {
+    &FEATURES
+}
+
 /// Install UserPatch 1.5 into a buffer containing a 1.0c executable.
 pub fn install_into(exe_buffer: &[u8]) -> Vec<u8> {
-    let injections = include!(concat!(env!("OUT_DIR"), "/injections.rs"));
     let mut bigger_buffer = exe_buffer.to_vec();
     bigger_buffer.extend(&vec![0; (3072 * 1024) - exe_buffer.len()]);
 
-    for Injection(addr, patch) in injections.iter() {
-        let patch = decode_hex(&patch);
-        apply_patch(&mut bigger_buffer, *addr as usize, &patch);
+    for Feature { patches, .. } in FEATURES.iter() {
+        for Injection(addr, patch) in patches.iter() {
+            let patch = decode_hex(&patch);
+            apply_patch(&mut bigger_buffer, *addr as usize, &patch);
+        }
     }
     bigger_buffer
 }
@@ -72,5 +111,10 @@ mod tests {
                 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
             ]
         );
+    }
+
+    #[test]
+    fn get_patch_options_test() {
+        eprintln!("{:#?}", get_available_features());
     }
 }
