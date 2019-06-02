@@ -1,6 +1,6 @@
 #![allow(clippy::unreadable_literal)]
-use std::{fmt, str};
 use crate::InstallOptions;
+use std::{fmt, str};
 
 #[derive(Clone)]
 pub struct Feature {
@@ -76,32 +76,36 @@ pub fn get_available_features() -> &'static [Feature] {
 }
 
 fn configure_features(options: InstallOptions) -> Vec<Feature> {
-    FEATURES.iter().cloned().map(|mut f| {
-        f.enable(match f.name {
-            "Widescreen interface style" => options.widescreen_command_bar,
-            "Windowed mode support" => options.windowed_mode,
-            "Port forwarding support" => options.upnp,
-            "Darken mini-map red" => options.alternate_red,
-            "Darken mini-map purple" => options.alternate_purple,
-            "Darken mini-map grey" => options.alternate_gray,
-            "Population caps to 1000" => options.extend_population_caps,
-            "Snow/ice terrain removal" => options.replace_snow_with_grass,
-            "Enable water animation" => options.water_animation,
-            "Precision scrolling system" => options.precision_scrolling,
-            "Shift group appending" => options.shift_group_append,
-            "Keydown object hotkeys" => options.keydown_hotkeys,
-            "New save filename format" => options.savegame_format,
-            "Multiple building queue" => options.multiple_queue,
-            "Original patrol default" => options.original_patrol_delay,
-            "Disable water movement" => !options.water_movement,
-            "Disable weather system" => !options.weather_system,
-            "Disable custom terrains" => !options.custom_terrains,
-            "Disable terrain underwater" => !options.terrain_underwater,
-            "Numeric age display" => options.numeric_age_display,
-            _ => f.enabled(),
-        });
-        f
-    }).collect()
+    FEATURES
+        .iter()
+        .cloned()
+        .map(|mut f| {
+            f.enable(match f.name {
+                "Widescreen interface style" => options.widescreen_command_bar,
+                "Windowed mode support" => options.windowed_mode,
+                "Port forwarding support" => options.upnp,
+                "Darken mini-map red" => options.alternate_red,
+                "Darken mini-map purple" => options.alternate_purple,
+                "Darken mini-map grey" => options.alternate_gray,
+                "Population caps to 1000" => options.extend_population_caps,
+                "Snow/ice terrain removal" => options.replace_snow_with_grass,
+                "Enable water animation" => options.water_animation,
+                "Precision scrolling system" => options.precision_scrolling,
+                "Shift group appending" => options.shift_group_append,
+                "Keydown object hotkeys" => options.keydown_hotkeys,
+                "New save filename format" => options.savegame_format,
+                "Multiple building queue" => options.multiple_queue,
+                "Original patrol default" => options.original_patrol_delay,
+                "Disable water movement" => !options.water_movement,
+                "Disable weather system" => !options.weather_system,
+                "Disable custom terrains" => !options.custom_terrains,
+                "Disable terrain underwater" => !options.terrain_underwater,
+                "Numeric age display" => options.numeric_age_display,
+                _ => f.enabled(),
+            });
+            f
+        })
+        .collect()
 }
 
 /// Install UserPatch 1.5 into a buffer containing a 1.0c executable.
@@ -121,7 +125,11 @@ pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
             let patch = decode_hex(&patch);
             let mut addr = *addr as usize;
             while addr > bigger_buffer.len() {
-                eprintln!("WARNING decreasing addr {:x} {:x}", addr, addr - bigger_buffer.len());
+                eprintln!(
+                    "WARNING decreasing addr {:x} {:x}",
+                    addr,
+                    addr - bigger_buffer.len()
+                );
                 addr -= bigger_buffer.len()
             }
             apply_patch(&mut bigger_buffer, addr, &patch);

@@ -228,16 +228,20 @@ fn main() -> Result<()> {
     let mut patch_definitions: Vec<Vec<u8>> = Vec::new();
     let mut features_definition: Vec<u8> = Vec::new();
 
-
-    write!(&mut features_definition, "static ref FEATURES: Vec<Feature> = vec![\n")?;
+    write!(
+        &mut features_definition,
+        "static ref FEATURES: Vec<Feature> = vec![\n"
+    )?;
     for feature in &features {
         let mut patch_group = Vec::new();
         for inject in &feature.patches {
             match inject {
                 Patch::Header(name) => write!(&mut patch_group, "    // {}\n", name)?,
-                Patch::Hex(addr, patch) => {
-                    write!(&mut patch_group, "    Injection({:#x}, \"{}\"),\n", addr, patch)?
-                }
+                Patch::Hex(addr, patch) => write!(
+                    &mut patch_group,
+                    "    Injection({:#x}, \"{}\"),\n",
+                    addr, patch
+                )?,
                 Patch::Jmp(addr, to_addr) => write!(
                     &mut patch_group,
                     "    Injection({:#x}, \"E9{:08X}\"),\n",
@@ -248,12 +252,28 @@ fn main() -> Result<()> {
         }
         patch_definitions.push(patch_group);
         write!(&mut features_definition, "  // {:?}\n  Feature {{ name: \"{}\", optional: {:?}, affects_sync: {:?}, patches: &PATCH_GROUP_{}\n", feature.always_enabled, feature.name, feature.optional, feature.affects_sync, patch_definitions.len() - 1)?;
-        write!(&mut features_definition, ", enabled: {} }},\n", feature.enabled_by_default)?;
+        write!(
+            &mut features_definition,
+            ", enabled: {} }},\n",
+            feature.enabled_by_default
+        )?;
     }
     write!(&mut features_definition, "];\n")?;
 
     for (i, text) in patch_definitions.iter().enumerate() {
-        write!(f, "static PATCH_GROUP_{}: [Injection; {}] = [\n", i, features[i].patches.iter().fold(0, |acc, p| if let Patch::Header(_) = p { acc } else { acc + 1 }))?;
+        write!(
+            f,
+            "static PATCH_GROUP_{}: [Injection; {}] = [\n",
+            i,
+            features[i]
+                .patches
+                .iter()
+                .fold(0, |acc, p| if let Patch::Header(_) = p {
+                    acc
+                } else {
+                    acc + 1
+                })
+        )?;
         f.write_all(&text)?;
         write!(f, "];\n")?;
     }
