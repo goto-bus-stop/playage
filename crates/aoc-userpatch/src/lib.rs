@@ -1,9 +1,4 @@
-mod installer;
 mod patch;
-
-use installer::extract_installer;
-use std::fs::File;
-use std::io::Result;
 
 pub use patch::install_into;
 
@@ -77,62 +72,6 @@ pub struct InstallOptions {
     spec_research_events: bool,
     spec_market_events: bool,
     spec_score_stats: bool,
-}
-
-impl ToString for InstallOptions {
-    fn to_string(&self) -> String {
-        let flag_list = [
-            self.interface_style == InterfaceStyle::Widescreen,
-            self.windowed_mode,
-            self.upnp,
-            self.alternate_red,
-            self.alternate_purple,
-            self.alternate_gray,
-            self.extend_population_caps,
-            self.replace_snow_with_grass,
-            self.water_animation,
-            self.precision_scrolling,
-            self.shift_group_append,
-            self.keydown_hotkeys,
-            self.savegame_format,
-            self.multiple_queue,
-            self.original_patrol_delay,
-            !self.water_movement,
-            !self.weather_system,
-            !self.custom_terrains,
-            !self.terrain_underwater,
-            self.numeric_age_display,
-            self.touch_screen_control,
-            self.store_spec_addresses,
-            self.normal_mouse,
-            self.interface_style == InterfaceStyle::LeftAligned,
-            self.delink_volume,
-            self.wine_chatbox,
-            self.low_quality_environment,
-            self.low_fps,
-            !self.extended_hotkeys,
-            self.force_gameplay_features,
-            self.display_ore_resource,
-            !self.multiplayer_anti_cheat,
-            self.default_background_mode,
-            self.sp_at_multiplayer_speed,
-            self.debug_logging,
-            self.statistics_font_style,
-            self.background_audio_playback,
-            !self.civilian_attack_switch,
-            self.handle_small_farm_selections,
-            self.spec_research_events,
-            self.spec_market_events,
-            self.spec_score_stats,
-        ];
-
-        let flags = flag_list
-            .iter()
-            .map(|value| if *value { '1' } else { '0' })
-            .collect::<String>();
-
-        format!(r#""-i" "-f:{}""#, flags)
-    }
 }
 
 impl InstallOptions {
@@ -234,16 +173,4 @@ impl Default for InstallOptions {
             spec_score_stats: true,
         }
     }
-}
-
-pub fn install(options: InstallOptions) -> Result<()> {
-    {
-        let mut file = File::create("/tmp/up.exe")?;
-        extract_installer(&mut file)?;
-    }
-
-    println!(r#"wine "/tmp/up.exe" {}"#, options.to_string());
-
-    std::fs::remove_file("/tmp/up.exe")?;
-    unimplemented!();
 }
