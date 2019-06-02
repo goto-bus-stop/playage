@@ -7,8 +7,15 @@ use std::io::Result;
 
 pub use patch::install_into;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum InterfaceStyle {
+    LeftAligned,
+    Centered,
+    Widescreen,
+}
+
 pub struct InstallOptions {
-    widescreen_command_bar: bool,
+    interface_style: InterfaceStyle,
     /// Install windowed mode patch (Windows only).
     windowed_mode: bool,
     /// Install upnp for automatic port forwarding (Windows only).
@@ -68,12 +75,14 @@ pub struct InstallOptions {
     civilian_attack_switch: bool,
     handle_small_farm_selections: bool,
     spec_research_events: bool,
+    spec_market_events: bool,
+    spec_score_stats: bool,
 }
 
 impl ToString for InstallOptions {
     fn to_string(&self) -> String {
         let flag_list = [
-            self.widescreen_command_bar,
+            self.interface_style == InterfaceStyle::Widescreen,
             self.windowed_mode,
             self.upnp,
             self.alternate_red,
@@ -96,6 +105,7 @@ impl ToString for InstallOptions {
             self.touch_screen_control,
             self.store_spec_addresses,
             self.normal_mouse,
+            self.interface_style == InterfaceStyle::LeftAligned,
             self.delink_volume,
             self.wine_chatbox,
             self.low_quality_environment,
@@ -112,6 +122,8 @@ impl ToString for InstallOptions {
             !self.civilian_attack_switch,
             self.handle_small_farm_selections,
             self.spec_research_events,
+            self.spec_market_events,
+            self.spec_score_stats,
         ];
 
         let flags = flag_list
@@ -126,7 +138,7 @@ impl ToString for InstallOptions {
 impl InstallOptions {
     pub fn bare() -> Self {
         Self {
-            widescreen_command_bar: false,
+            interface_style: InterfaceStyle::Centered,
             windowed_mode: false,
             upnp: false,
             alternate_red: false,
@@ -165,6 +177,8 @@ impl InstallOptions {
             civilian_attack_switch: false,
             handle_small_farm_selections: false,
             spec_research_events: false,
+            spec_market_events: false,
+            spec_score_stats: false,
         }
     }
 }
@@ -172,7 +186,7 @@ impl InstallOptions {
 impl Default for InstallOptions {
     fn default() -> Self {
         Self {
-            widescreen_command_bar: true,
+            interface_style: InterfaceStyle::Widescreen,
             // Doesn't work in Wine
             windowed_mode: cfg!(os = "windows"),
             upnp: false,
@@ -216,6 +230,8 @@ impl Default for InstallOptions {
             civilian_attack_switch: false,
             handle_small_farm_selections: false,
             spec_research_events: false,
+            spec_market_events: false,
+            spec_score_stats: true,
         }
     }
 }

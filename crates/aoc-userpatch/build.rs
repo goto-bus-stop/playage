@@ -18,13 +18,13 @@ const BYTE_PATCH_ADDRESS: u32 = 0x00402AF0;
 /// The location of the PatchData JMP overload in memory space.
 const JMP_PATCH_ADDRESS: u32 = 0x00402FA0;
 /// The location of the std::wstring constructor in memory space.
-const STRING_CONSTRUCTOR_ADDRESS: u32 = 0x004AA9C0;
-const STRING_CONSTRUCTOR_ADDRESS16: u32 = 0x004AA8F0;
+const STRING_CONSTRUCTOR_ADDRESS: u32 = 0x004AB8B0;
+const STRING_CONSTRUCTOR_ADDRESS16: u32 = 0x004AB7E0;
 
 /// Base address of the code section.
 const CODE_BASE_ADDRESS: u32 = 0x00400C00;
 /// Base address of the data section.
-const DATA_BASE_ADDRESS: u32 = 0x00401600;
+const DATA_BASE_ADDRESS: u32 = 0x00401400;
 
 /// Opcode for `call` instructions.
 const ASM_CALL: u8 = 0xE8;
@@ -251,10 +251,13 @@ fn main() -> Result<()> {
             }
         }
         patch_definitions.push(patch_group);
-        write!(&mut features_definition, "  // {:?}\n  Feature {{ name: \"{}\", optional: {:?}, affects_sync: {:?}, patches: &PATCH_GROUP_{}\n", feature.always_enabled, feature.name, feature.optional, feature.affects_sync, patch_definitions.len() - 1)?;
         write!(
             &mut features_definition,
-            ", enabled: {} }},\n",
+            "    Feature {{ name: \"{}\", optional: {:?}, affects_sync: {:?}, patches: &PATCH_GROUP_{}, enabled: {:?} }},\n",
+            feature.name,
+            feature.optional,
+            feature.affects_sync,
+            patch_definitions.len() - 1,
             feature.enabled_by_default
         )?;
     }
@@ -278,7 +281,7 @@ fn main() -> Result<()> {
         write!(f, "];\n")?;
     }
 
-    write!(f, "lazy_static::lazy_static! {{\n");
+    write!(f, "lazy_static::lazy_static! {{\n")?;
 
     f.write_all(&features_definition)?;
 

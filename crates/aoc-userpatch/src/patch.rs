@@ -1,5 +1,5 @@
 #![allow(clippy::unreadable_literal)]
-use crate::InstallOptions;
+use crate::{InterfaceStyle, InstallOptions};
 use std::{fmt, str};
 
 #[derive(Clone)]
@@ -80,8 +80,12 @@ fn configure_features(options: InstallOptions) -> Vec<Feature> {
         .iter()
         .cloned()
         .map(|mut f| {
+            if !f.optional {
+                return f;
+            }
             f.enable(match f.name {
-                "Widescreen interface style" => options.widescreen_command_bar,
+                "Widescreen interface style" => options.interface_style == InterfaceStyle::Widescreen,
+                "Left-aligned interface style" => options.interface_style == InterfaceStyle::LeftAligned,
                 "Windowed mode support" => options.windowed_mode,
                 "Port forwarding support" => options.upnp,
                 "Darken mini-map red" => options.alternate_red,
@@ -101,7 +105,31 @@ fn configure_features(options: InstallOptions) -> Vec<Feature> {
                 "Disable custom terrains" => !options.custom_terrains,
                 "Disable terrain underwater" => !options.terrain_underwater,
                 "Numeric age display" => options.numeric_age_display,
-                _ => f.enabled(),
+                "Touch screen control" => options.touch_screen_control,
+                "Store Sx spec addresses" => options.store_spec_addresses,
+                "Custom normal mouse" => options.normal_mouse,
+                "Delink from system volume" => options.delink_volume,
+                "Alternate chat box for wine" => options.wine_chatbox,
+                "Lower quality environment" => options.low_quality_environment,
+                "Restore 20fps for single player" => options.low_fps,
+                "Disable extended hotkeys" => !options.extended_hotkeys,
+                "Force new gameplay features" => options.force_gameplay_features,
+                "Ore resource amount display" => options.display_ore_resource,
+                "Disable multiplayer anti-cheat" => !options.multiplayer_anti_cheat,
+                "Default to background mode" => options.default_background_mode,
+                "Windowed fullscreen mode" => false,
+                "Multiplayer single player speed" => options.sp_at_multiplayer_speed,
+                "Rms and Scx debug logging" => options.debug_logging,
+                "Change statistics font style" => options.statistics_font_style,
+                "Background audio playback" => options.background_audio_playback,
+                "Disable civilian attack switch" => options.civilian_attack_switch,
+                "Handle small farm selections" => options.handle_small_farm_selections,
+                "Show rec/spec research events" => options.spec_research_events,
+                "Show rec/spec market events" => options.spec_market_events,
+                "Disable rec/spec score stats" => !options.spec_score_stats,
+                "Hidden civilization selection" => false,
+                "Allow spectators by default" => false,
+                _ => unreachable!(f.name),
             });
             f
         })
@@ -125,12 +153,12 @@ pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
             let patch = decode_hex(&patch);
             let mut addr = *addr as usize;
             while addr > bigger_buffer.len() {
-                eprintln!(
-                    "WARNING decreasing addr {:x} {:x}",
-                    addr,
-                    addr - bigger_buffer.len()
-                );
-                addr -= bigger_buffer.len()
+                eprintln!("WARNING decreasing addr {:x}", addr);
+                if addr < 0x7A5000 {
+                    addr -= 0x400000;
+                } else {
+                    addr -= 0x512000;
+                }
             }
             apply_patch(&mut bigger_buffer, addr, &patch);
         }
