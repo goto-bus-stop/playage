@@ -123,6 +123,52 @@ impl ToString for InstallOptions {
     }
 }
 
+impl InstallOptions {
+    pub fn bare() -> Self {
+        Self {
+            widescreen_command_bar: false,
+            windowed_mode: false,
+            upnp: false,
+            alternate_red: false,
+            alternate_purple: false,
+            alternate_gray: false,
+            extend_population_caps: false,
+            replace_snow_with_grass: false,
+            water_animation: false,
+            precision_scrolling: false,
+            shift_group_append: false,
+            keydown_hotkeys: false,
+            savegame_format: false,
+            multiple_queue: false,
+            original_patrol_delay: false,
+            water_movement: false,
+            weather_system: false,
+            custom_terrains: false,
+            terrain_underwater: false,
+            numeric_age_display: false,
+            touch_screen_control: false,
+            store_spec_addresses: false,
+            normal_mouse: false,
+            delink_volume: false,
+            wine_chatbox: false,
+            low_quality_environment: false,
+            low_fps: false,
+            extended_hotkeys: false,
+            force_gameplay_features: false,
+            display_ore_resource: false,
+            multiplayer_anti_cheat: false,
+            default_background_mode: false,
+            sp_at_multiplayer_speed: false,
+            debug_logging: false,
+            statistics_font_style: false,
+            background_audio_playback: false,
+            civilian_attack_switch: false,
+            handle_small_farm_selections: false,
+            spec_research_events: false,
+        }
+    }
+}
+
 impl Default for InstallOptions {
     fn default() -> Self {
         Self {
