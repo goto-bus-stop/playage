@@ -1,5 +1,4 @@
 #![allow(clippy::unreadable_literal)]
-use lazy_static::lazy_static;
 use std::{fmt, str};
 
 pub struct Feature {
@@ -7,7 +6,7 @@ pub struct Feature {
     pub optional: bool,
     pub affects_sync: bool,
     enabled: bool,
-    patches: Vec<Injection>,
+    patches: &'static [Injection],
 }
 
 impl fmt::Debug for Feature {
@@ -68,9 +67,7 @@ fn apply_patch(buffer: &mut [u8], offset: usize, patch: &[u8]) {
     (&mut buffer[offset..end]).copy_from_slice(&patch);
 }
 
-lazy_static! {
-    static ref FEATURES: Vec<Feature> = include!(concat!(env!("OUT_DIR"), "/injections.rs"));
-}
+include!(concat!(env!("OUT_DIR"), "/injections.rs"));
 
 pub fn get_available_features() -> &'static [Feature] {
     &FEATURES
@@ -81,10 +78,20 @@ pub fn install_into(exe_buffer: &[u8]) -> Vec<u8> {
     let mut bigger_buffer = exe_buffer.to_vec();
     bigger_buffer.extend(&vec![0; (3072 * 1024) - exe_buffer.len()]);
 
-    for Feature { patches, .. } in FEATURES.iter() {
+    for feature in FEATURES.iter() {
+        if !feature.enabled() {
+            continue;
+        }
+
+        let Feature { patches, .. } = feature;
         for Injection(addr, patch) in patches.iter() {
             let patch = decode_hex(&patch);
-            apply_patch(&mut bigger_buffer, *addr as usize, &patch);
+            let mut addr = *addr as usize;
+            while addr > bigger_buffer.len() {
+                eprintln!("WARNING decreasing addr {:x} {:x}", addr, addr - bigger_buffer.len());
+                addr -= bigger_buffer.len()
+            }
+            apply_patch(&mut bigger_buffer, addr, &patch);
         }
     }
     bigger_buffer
@@ -93,6 +100,7 @@ pub fn install_into(exe_buffer: &[u8]) -> Vec<u8> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs::{read, write};
 
     #[test]
     fn decode_hex_test() {
@@ -119,6 +127,17 @@ mod tests {
                 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8, 0u8,
             ]
         );
+    }
+
+    #[test]
+    fn produce_bare_up15() {
+        use std::{env, path::PathBuf};
+        if let Ok(base) = env::var("AOCDIR") {
+            let base = PathBuf::from(base);
+            let aoc = read(base.join("Age2_x1/age2_x1.0c.exe")).unwrap();
+            let up15 = install_into(&aoc);
+            write(base.join("Age2_x1/age2_x1.rs.exe"), &up15).unwrap();
+        }
     }
 
     #[test]

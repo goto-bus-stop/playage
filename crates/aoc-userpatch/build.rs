@@ -225,25 +225,44 @@ fn main() -> Result<()> {
     let packed_bytes = fs::read("resources/SetupAoC.exe")?;
     let bytes = upx_unpack(&packed_bytes, &out_dir)?;
     let features = find_injections(&bytes)?;
-    write!(f, "vec![\n")?;
-    for feature in features {
-        write!(f, "  // {:?}\n  Feature {{ name: \"{}\", optional: {:?}, affects_sync: {:?}, patches: vec![\n", feature.always_enabled, feature.name, feature.optional, feature.affects_sync)?;
-        for inject in feature.patches {
+    let mut patch_definitions: Vec<Vec<u8>> = Vec::new();
+    let mut features_definition: Vec<u8> = Vec::new();
+
+
+    write!(&mut features_definition, "static ref FEATURES: Vec<Feature> = vec![\n")?;
+    for feature in &features {
+        let mut patch_group = Vec::new();
+        for inject in &feature.patches {
             match inject {
-                Patch::Header(name) => write!(f, "    // {}\n", name)?,
+                Patch::Header(name) => write!(&mut patch_group, "    // {}\n", name)?,
                 Patch::Hex(addr, patch) => {
-                    write!(f, "    Injection({:#x}, \"{}\"),\n", addr, patch)?
+                    write!(&mut patch_group, "    Injection({:#x}, \"{}\"),\n", addr, patch)?
                 }
                 Patch::Jmp(addr, to_addr) => write!(
-                    f,
+                    &mut patch_group,
                     "    Injection({:#x}, \"E9{:08X}\"),\n",
                     addr,
                     to_addr.overflowing_sub(addr + 5).0.to_be()
                 )?,
             }
         }
-        write!(f, "  ], enabled: {} }},\n", feature.enabled_by_default)?;
+        patch_definitions.push(patch_group);
+        write!(&mut features_definition, "  // {:?}\n  Feature {{ name: \"{}\", optional: {:?}, affects_sync: {:?}, patches: &PATCH_GROUP_{}\n", feature.always_enabled, feature.name, feature.optional, feature.affects_sync, patch_definitions.len() - 1)?;
+        write!(&mut features_definition, ", enabled: {} }},\n", feature.enabled_by_default)?;
     }
-    write!(f, "]")?;
+    write!(&mut features_definition, "];\n")?;
+
+    for (i, text) in patch_definitions.iter().enumerate() {
+        write!(f, "static PATCH_GROUP_{}: [Injection; {}] = [\n", i, features[i].patches.iter().fold(0, |acc, p| if let Patch::Header(_) = p { acc } else { acc + 1 }))?;
+        f.write_all(&text)?;
+        write!(f, "];\n")?;
+    }
+
+    write!(f, "lazy_static::lazy_static! {{\n");
+
+    f.write_all(&features_definition)?;
+
+    write!(f, "}}\n")?;
+
     Ok(())
 }
