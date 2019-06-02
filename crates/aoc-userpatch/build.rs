@@ -23,8 +23,10 @@ const STRING_CONSTRUCTOR_ADDRESS16: u32 = 0x004AB7E0;
 
 /// Base address of the code section.
 const CODE_BASE_ADDRESS: u32 = 0x00400C00;
+/// Base address of the read-only data section.
+const RDATA_BASE_ADDRESS: u32 = 0x00401400;
 /// Base address of the data section.
-const DATA_BASE_ADDRESS: u32 = 0x00401400;
+const DATA_BASE_ADDRESS: u32 = 0x00401800;
 
 /// Opcode for `call` instructions.
 const ASM_CALL: u8 = 0xE8;
@@ -72,18 +74,11 @@ fn read_utf16_str(bytes: &[u8], start: u32) -> String {
 }
 
 fn to_hex(bytes: &[u8]) -> String {
-    fn to_hex_char(c: u8) -> char {
-        match c {
-            0xA...0xF => char::from(b'A' - 10 + c),
-            0x0...0x9 => char::from(b'0' + c),
-            _ => panic!("expected number to be 4 bits, got {}", c),
-        }
+    let mut hex = String::new();
+    for b in bytes {
+        hex.push_str(&format!("{:02X}", b));
     }
-
-    bytes
-        .iter()
-        .flat_map(|byte| vec![to_hex_char((byte & 0xF0) >> 4), to_hex_char(byte & 0x0F)])
-        .collect::<String>()
+    hex
 }
 
 /// Check if a string contains only valid hexadecimal characters ([0-9A-Fa-f]).
@@ -131,7 +126,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                     }
                     HEX_PATCH_ADDRESS => {
                         stack_args.reverse();
-                        let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
+                        let patch = read_c_str(exe, stack_args[1] - RDATA_BASE_ADDRESS);
                         let addr = stack_args[0];
                         assert!(is_hex_string(&patch), "unexpected non-hex string");
                         push_patch(&mut features, Patch::Hex(addr, patch));
@@ -143,7 +138,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         let addr = stack_args[0];
                         push_patch(
                             &mut features,
-                            Patch::Hex(stack_args[1] - DATA_BASE_ADDRESS, to_hex(patch)),
+                            Patch::Hex(addr, to_hex(patch)),
                         );
                     }
                     NAMED_HEX_PATCH_ADDRESS => {
@@ -151,7 +146,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                             push_patch(&mut features, Patch::Header(latest_named.clone()));
                         }
                         stack_args.reverse();
-                        let patch = read_c_str(exe, stack_args[1] - DATA_BASE_ADDRESS);
+                        let patch = read_c_str(exe, stack_args[1] - RDATA_BASE_ADDRESS);
                         let addr = stack_args[0];
                         assert!(is_hex_string(&patch), "unexpected non-hex string");
                         push_patch(&mut features, Patch::Hex(addr, patch));
@@ -165,8 +160,8 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                     STRING_CONSTRUCTOR_ADDRESS16 if stack_args.len() > 0 => {
                         stack_args.reverse();
                         let addr = stack_args[0];
-                        if addr > DATA_BASE_ADDRESS {
-                            latest_named = read_utf16_str(exe, addr - DATA_BASE_ADDRESS);
+                        if addr > RDATA_BASE_ADDRESS {
+                            latest_named = read_utf16_str(exe, addr - RDATA_BASE_ADDRESS);
                         } else {
                             latest_named = String::new();
                         }
@@ -174,7 +169,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                     STRING_CONSTRUCTOR_ADDRESS => {
                         stack_args.reverse();
                         let addr = stack_args[0];
-                        latest_named = read_c_str(exe, addr - DATA_BASE_ADDRESS);
+                        latest_named = read_c_str(exe, addr - RDATA_BASE_ADDRESS);
                     }
                     _ => {}
                 }

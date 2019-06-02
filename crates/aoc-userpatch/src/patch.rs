@@ -140,8 +140,9 @@ fn configure_features(options: InstallOptions) -> Vec<Feature> {
 pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
     let features = configure_features(options);
 
-    let mut bigger_buffer = exe_buffer.to_vec();
-    bigger_buffer.extend(&vec![0; (3072 * 1024) - exe_buffer.len()]);
+    let mut extended_buffer = exe_buffer.to_vec();
+    let three_megs = 3 * 1024 * 1024;
+    extended_buffer.extend(&vec![0; three_megs - exe_buffer.len()]);
 
     for feature in features.iter() {
         if !feature.enabled() {
@@ -152,7 +153,7 @@ pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
         for Injection(addr, patch) in patches.iter() {
             let patch = decode_hex(&patch);
             let mut addr = *addr as usize;
-            while addr > bigger_buffer.len() {
+            while addr > extended_buffer.len() {
                 eprintln!("WARNING decreasing addr {:x}", addr);
                 if addr < 0x7A5000 {
                     addr -= 0x400000;
@@ -160,10 +161,10 @@ pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
                     addr -= 0x512000;
                 }
             }
-            apply_patch(&mut bigger_buffer, addr, &patch);
+            apply_patch(&mut extended_buffer, addr, &patch);
         }
     }
-    bigger_buffer
+    extended_buffer
 }
 
 #[cfg(test)]
