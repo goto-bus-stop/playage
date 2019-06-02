@@ -1,5 +1,5 @@
 #![allow(clippy::unreadable_literal)]
-use crate::{InterfaceStyle, InstallOptions};
+use crate::{InstallOptions, InterfaceStyle};
 use std::{fmt, str};
 
 #[derive(Clone)]
@@ -84,8 +84,12 @@ fn configure_features(options: InstallOptions) -> Vec<Feature> {
                 return f;
             }
             f.enable(match f.name {
-                "Widescreen interface style" => options.interface_style == InterfaceStyle::Widescreen,
-                "Left-aligned interface style" => options.interface_style == InterfaceStyle::LeftAligned,
+                "Widescreen interface style" => {
+                    options.interface_style == InterfaceStyle::Widescreen
+                }
+                "Left-aligned interface style" => {
+                    options.interface_style == InterfaceStyle::LeftAligned
+                }
                 "Windowed mode support" => options.windowed_mode,
                 "Port forwarding support" => options.upnp,
                 "Darken mini-map red" => options.alternate_red,

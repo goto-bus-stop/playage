@@ -30,6 +30,8 @@ const DATA_BASE_ADDRESS: u32 = 0x00401800;
 
 /// Opcode for `call` instructions.
 const ASM_CALL: u8 = 0xE8;
+/// Opcode for 32-bit `jmp` instructions.
+const ASM_JMP: u8 = 0xE9;
 /// Opcode for `push` instructions with 32 bit operand.
 const ASM_PUSH32: u8 = 0x68;
 /// Opcode for `push` instructions with 8 bit operand.
@@ -47,7 +49,8 @@ struct Feature {
 #[derive(Debug)]
 enum Patch {
     Header(String),
-    Jmp(u32, u32),
+    Call(u32, u32, u32),
+    Jmp(u32, u32, u32),
     Hex(u32, String),
 }
 
@@ -136,10 +139,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         let start = (stack_args[1] - DATA_BASE_ADDRESS) as usize;
                         let patch = &exe[start..start + stack_args[2] as usize];
                         let addr = stack_args[0];
-                        push_patch(
-                            &mut features,
-                            Patch::Hex(addr, to_hex(patch)),
-                        );
+                        push_patch(&mut features, Patch::Hex(addr, to_hex(patch)));
                     }
                     NAMED_HEX_PATCH_ADDRESS => {
                         if !latest_named.is_empty() {
@@ -155,7 +155,15 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         stack_args.reverse();
                         let addr = stack_args[0];
                         let to_addr = stack_args[1];
-                        push_patch(&mut features, Patch::Jmp(addr, to_addr));
+                        let padding = stack_args[2];
+                        push_patch(
+                            &mut features,
+                            if stack_args[3] != 0 {
+                                Patch::Jmp(addr, to_addr, padding)
+                            } else {
+                                Patch::Call(addr, to_addr, padding)
+                            },
+                        );
                     }
                     STRING_CONSTRUCTOR_ADDRESS16 if stack_args.len() > 0 => {
                         stack_args.reverse();
@@ -227,6 +235,34 @@ fn main() -> Result<()> {
         &mut features_definition,
         "static ref FEATURES: Vec<Feature> = vec![\n"
     )?;
+
+    fn serialize_jmp_or_call(
+        mut f: impl std::io::Write,
+        instr: u8,
+        addr: u32,
+        to_addr: u32,
+        mut padding: u32,
+    ) -> std::io::Result<()> {
+        write!(
+            f,
+            "    Injection({:#x}, \"{:02X}{:08X}",
+            addr,
+            instr,
+            to_addr.overflowing_sub(addr + 5).0.to_be()
+        )?;
+        while padding > 0 {
+            let mut group = if padding > 4 { 4 } else { padding };
+            while group > 1 {
+                write!(f, "66")?;
+                group -= 1;
+            }
+            write!(f, "90")?;
+            padding = padding.saturating_sub(4);
+        }
+        write!(f, "\"),\n")?;
+        Ok(())
+    }
+
     for feature in &features {
         let mut patch_group = Vec::new();
         for inject in &feature.patches {
@@ -237,12 +273,12 @@ fn main() -> Result<()> {
                     "    Injection({:#x}, \"{}\"),\n",
                     addr, patch
                 )?,
-                Patch::Jmp(addr, to_addr) => write!(
-                    &mut patch_group,
-                    "    Injection({:#x}, \"E9{:08X}\"),\n",
-                    addr,
-                    to_addr.overflowing_sub(addr + 5).0.to_be()
-                )?,
+                Patch::Call(addr, to_addr, padding) => {
+                    serialize_jmp_or_call(&mut patch_group, ASM_CALL, *addr, *to_addr, *padding)?
+                }
+                Patch::Jmp(addr, to_addr, padding) => {
+                    serialize_jmp_or_call(&mut patch_group, ASM_JMP, *addr, *to_addr, *padding)?
+                }
             }
         }
         patch_definitions.push(patch_group);
