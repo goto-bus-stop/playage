@@ -2,14 +2,33 @@ mod patch;
 
 pub use patch::install_into;
 
+/// Interface style.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum InterfaceStyle {
+    /// Use the left-aligned interface style.
     LeftAligned,
+    /// Use the centered interface style.
     Centered,
+    /// Use the widescreen interface style.
     Widescreen,
 }
 
+impl std::str::FromStr for InterfaceStyle {
+    type Err = &'static str;
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "left" => Ok(InterfaceStyle::LeftAligned),
+            "center" => Ok(InterfaceStyle::Centered),
+            "wide" | "widescreen" => Ok(InterfaceStyle::Widescreen),
+            _ => Err("Invalid interface style, expected left | center | wide"),
+        }
+    }
+}
+
+/// UserPatch installation options.
+#[derive(Debug, Clone)]
 pub struct InstallOptions {
+    /// Interface style.
     interface_style: InterfaceStyle,
     /// Install windowed mode patch (Windows only).
     windowed_mode: bool,
@@ -41,36 +60,60 @@ pub struct InstallOptions {
     multiple_queue: bool,
     /// Use the original patrol delay.
     original_patrol_delay: bool,
+    /// Enable water movement.
     water_movement: bool,
     /// Enable the weather system, for rain/snow effects.
     weather_system: bool,
     /// Enable loading custom terrains from scenarios and ZR@ maps.
     custom_terrains: bool,
+    /// Enable terrain underwater.
     terrain_underwater: bool,
     /// Show ages as numbers instead of words in the score display.
     numeric_age_display: bool,
     /// Handle touch screen input events.
     touch_screen_control: bool,
+    /// Store Sx spectator addresses.
     store_spec_addresses: bool,
+    /// Use custom normal mouse.
     normal_mouse: bool,
 
+    /// Delink in-game volume from the system volume.
     delink_volume: bool,
+    /// Use an alternate chatbox implementation that does not flicker in wine.
+    ///
+    /// This is enabled by default when running on Linux systems.
     wine_chatbox: bool,
+    /// Lower quality environment.
     low_quality_environment: bool,
+    /// Restore the 20fps refresh rate for single player.
     low_fps: bool,
+    /// Enable extended hotkeys.
     extended_hotkeys: bool,
+    /// Force-enable new gameplay features.
     force_gameplay_features: bool,
+    /// Display the ore resource in the resources bar.
     display_ore_resource: bool,
+    /// Enable multiplayer anti-cheat measures.
     multiplayer_anti_cheat: bool,
+    /// Default to background mode.
     default_background_mode: bool,
+    /// Run single-player games at multiplayer speed.
     sp_at_multiplayer_speed: bool,
+    /// Enable rms and scx debug logging. **(Affects sync)**
     debug_logging: bool,
+    /// Change statistics font style.
     statistics_font_style: bool,
+    /// Background audio playback.
     background_audio_playback: bool,
+    /// Keep civilian attack switch. **(Affects sync)**
     civilian_attack_switch: bool,
+    /// Handle small 2x2 farm selections. **(Affects sync)**
     handle_small_farm_selections: bool,
+    /// Show rec/spec research events. **(Affects sync)**
     spec_research_events: bool,
+    /// Show rec/spec market events. **(Affects sync)**
     spec_market_events: bool,
+    /// Show rec/spec score statistics.
     spec_score_stats: bool,
 }
 

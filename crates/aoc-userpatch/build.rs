@@ -259,7 +259,7 @@ fn main() -> Result<()> {
         let bytes = to_addr.overflowing_sub(addr + 5).0.to_le_bytes();
         write!(
             f,
-            "    Injection({:#x}, &[{:#02X}, {:#02X}, {:#02X}, {:#02X}, {:#02X}",
+            "    Injection({:#x}, &[{:#04X}, {:#04X}, {:#04X}, {:#04X}, {:#04X}",
             addr, instr, bytes[0], bytes[1], bytes[2], bytes[3],
         )?;
         while padding > 0 {
@@ -280,11 +280,17 @@ fn main() -> Result<()> {
         for inject in &feature.patches {
             match inject {
                 Patch::Header(name) => write!(&mut patch_group, "    // {}\n", name)?,
-                Patch::Hex(addr, patch) => write!(
-                    &mut patch_group,
-                    "    Injection({:#x}, &{:?}),\n",
-                    addr, &patch
-                )?,
+                Patch::Hex(addr, patch) => {
+                    write!(
+                        &mut patch_group,
+                        "    Injection({:#x}, &[{:#04X}",
+                        addr, patch[0]
+                    )?;
+                    for b in patch.iter().skip(1) {
+                        write!(&mut patch_group, ", {:#04X}", b)?;
+                    }
+                    write!(&mut patch_group, "]),\n")?;
+                }
                 Patch::Call(addr, to_addr, padding) => {
                     serialize_jmp_or_call(&mut patch_group, ASM_CALL, *addr, *to_addr, *padding)?
                 }
