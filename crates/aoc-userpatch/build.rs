@@ -51,7 +51,7 @@ enum Patch {
     Header(String),
     Call(u32, u32, u32),
     Jmp(u32, u32, u32),
-    Hex(u32, String),
+    Hex(u32, Vec<u8>),
 }
 
 /// Read a NUL-terminated string from a byte slice.
@@ -76,12 +76,24 @@ fn read_utf16_str(bytes: &[u8], start: u32) -> String {
     UTF_16LE.decode(&str_bytes).0.to_owned().to_string()
 }
 
-fn to_hex(bytes: &[u8]) -> String {
-    let mut hex = String::new();
-    for b in bytes {
-        hex.push_str(&format!("{:02X}", b));
+/// Decode a hexadecimal string to a list of byte values.
+fn decode_hex(hexa: &str) -> Vec<u8> {
+    assert_eq!(
+        hexa.len() % 2,
+        0,
+        "hex string must have length divisible by 2"
+    );
+    let mut bytes = Vec::with_capacity(hexa.len() / 2);
+    for c in hexa.as_bytes().chunks(2) {
+        let high = char::from(c[0])
+            .to_digit(16)
+            .expect("expected only hexadecimal characters");
+        let low = char::from(c[1])
+            .to_digit(16)
+            .expect("expected only hexadecimal characters");
+        bytes.push((high * 16 + low) as u8);
     }
-    hex
+    bytes
 }
 
 /// Check if a string contains only valid hexadecimal characters ([0-9A-Fa-f]).
@@ -132,14 +144,14 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         let patch = read_c_str(exe, stack_args[1] - RDATA_BASE_ADDRESS);
                         let addr = stack_args[0];
                         assert!(is_hex_string(&patch), "unexpected non-hex string");
-                        push_patch(&mut features, Patch::Hex(addr, patch));
+                        push_patch(&mut features, Patch::Hex(addr, decode_hex(&patch)));
                     }
                     BYTE_PATCH_ADDRESS => {
                         stack_args.reverse();
                         let start = (stack_args[1] - DATA_BASE_ADDRESS) as usize;
                         let patch = &exe[start..start + stack_args[2] as usize];
                         let addr = stack_args[0];
-                        push_patch(&mut features, Patch::Hex(addr, to_hex(patch)));
+                        push_patch(&mut features, Patch::Hex(addr, patch.to_vec()));
                     }
                     NAMED_HEX_PATCH_ADDRESS => {
                         if !latest_named.is_empty() {
@@ -149,7 +161,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         let patch = read_c_str(exe, stack_args[1] - RDATA_BASE_ADDRESS);
                         let addr = stack_args[0];
                         assert!(is_hex_string(&patch), "unexpected non-hex string");
-                        push_patch(&mut features, Patch::Hex(addr, patch));
+                        push_patch(&mut features, Patch::Hex(addr, decode_hex(&patch)));
                     }
                     JMP_PATCH_ADDRESS => {
                         stack_args.reverse();
@@ -244,23 +256,22 @@ fn main() -> Result<()> {
         to_addr: u32,
         mut padding: u32,
     ) -> std::io::Result<()> {
+        let bytes = to_addr.overflowing_sub(addr + 5).0.to_le_bytes();
         write!(
             f,
-            "    Injection({:#x}, \"{:02X}{:08X}",
-            addr,
-            instr,
-            to_addr.overflowing_sub(addr + 5).0.to_be()
+            "    Injection({:#x}, &[{:#02X}, {:#02X}, {:#02X}, {:#02X}, {:#02X}",
+            addr, instr, bytes[0], bytes[1], bytes[2], bytes[3],
         )?;
         while padding > 0 {
             let mut group = if padding > 4 { 4 } else { padding };
             while group > 1 {
-                write!(f, "66")?;
+                write!(f, ", 0x66")?;
                 group -= 1;
             }
-            write!(f, "90")?;
+            write!(f, ", 0x90")?;
             padding = padding.saturating_sub(4);
         }
-        write!(f, "\"),\n")?;
+        write!(f, "]),\n")?;
         Ok(())
     }
 
@@ -271,8 +282,8 @@ fn main() -> Result<()> {
                 Patch::Header(name) => write!(&mut patch_group, "    // {}\n", name)?,
                 Patch::Hex(addr, patch) => write!(
                     &mut patch_group,
-                    "    Injection({:#x}, \"{}\"),\n",
-                    addr, patch
+                    "    Injection({:#x}, &{:?}),\n",
+                    addr, &patch
                 )?,
                 Patch::Call(addr, to_addr, padding) => {
                     serialize_jmp_or_call(&mut patch_group, ASM_CALL, *addr, *to_addr, *padding)?
@@ -316,4 +327,23 @@ fn main() -> Result<()> {
     f.write_all(&features_definition)?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn is_hex_string_test() {
+        assert_eq!(is_hex_string("ABCDEF"), true);
+        assert_eq!(is_hex_string("ABCDEFG"), true);
+        assert_eq!(is_hex_string("123456"), false);
+        assert_eq!(is_hex_string("whatever"), false);
+    }
+
+    #[test]
+    fn decode_hex_test() {
+        assert_eq!(decode_hex("ABCDEF"), vec![0xAB_u8, 0xCD_u8, 0xEF_u8]);
+        assert_eq!(decode_hex("123456"), vec![0x12_u8, 0x34_u8, 0x56_u8]);
+    }
 }

@@ -41,27 +41,7 @@ impl Feature {
 }
 
 /// Describes a patch as an offset and a hexadecimal string.
-struct Injection(u32, &'static str);
-
-/// Decode a hexadecimal string to a list of byte values.
-fn decode_hex(hexa: &str) -> Vec<u8> {
-    assert_eq!(
-        hexa.len() % 2,
-        0,
-        "hex string must have length divisible by 2"
-    );
-    let mut bytes = Vec::with_capacity(hexa.len() / 2);
-    for c in hexa.as_bytes().chunks(2) {
-        let high = char::from(c[0])
-            .to_digit(16)
-            .expect("expected only hexadecimal characters");
-        let low = char::from(c[1])
-            .to_digit(16)
-            .expect("expected only hexadecimal characters");
-        bytes.push((high * 16 + low) as u8);
-    }
-    bytes
-}
+struct Injection(u32, &'static [u8]);
 
 /// Overwrite bytes in buffer at an offset.
 fn apply_patch(buffer: &mut [u8], offset: usize, patch: &[u8]) {
@@ -155,7 +135,6 @@ pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
 
         let Feature { patches, .. } = feature;
         for Injection(addr, patch) in patches.iter() {
-            let patch = decode_hex(&patch);
             let mut addr = *addr as usize;
             if addr > extended_buffer.len() {
                 if addr < 0x7A5000 {
@@ -164,7 +143,7 @@ pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
                     addr -= 0x512000;
                 }
             }
-            apply_patch(&mut extended_buffer, addr, &patch);
+            apply_patch(&mut extended_buffer, addr, patch);
         }
     }
     extended_buffer
@@ -175,12 +154,6 @@ mod tests {
     use super::*;
     use crate::InstallOptions;
     use std::fs::{read, write};
-
-    #[test]
-    fn decode_hex_test() {
-        assert_eq!(decode_hex("ABCDEF"), vec![0xAB_u8, 0xCD_u8, 0xEF_u8]);
-        assert_eq!(decode_hex("123456"), vec![0x12_u8, 0x34_u8, 0x56_u8]);
-    }
 
     #[test]
     fn apply_patch_test() {
