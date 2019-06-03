@@ -233,7 +233,8 @@ fn main() -> Result<()> {
 
     write!(
         &mut features_definition,
-        "static ref FEATURES: Vec<Feature> = vec![\n"
+        "static FEATURES: [Feature; {}] = [\n",
+        features.len()
     )?;
 
     fn serialize_jmp_or_call(
@@ -312,11 +313,7 @@ fn main() -> Result<()> {
         write!(f, "];\n")?;
     }
 
-    write!(f, "lazy_static::lazy_static! {{\n")?;
-
     f.write_all(&features_definition)?;
-
-    write!(f, "}}\n")?;
 
     Ok(())
 }

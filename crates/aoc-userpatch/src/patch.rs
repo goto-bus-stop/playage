@@ -157,8 +157,7 @@ pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
         for Injection(addr, patch) in patches.iter() {
             let patch = decode_hex(&patch);
             let mut addr = *addr as usize;
-            while addr > extended_buffer.len() {
-                eprintln!("WARNING decreasing addr {:x}", addr);
+            if addr > extended_buffer.len() {
                 if addr < 0x7A5000 {
                     addr -= 0x400000;
                 } else {
