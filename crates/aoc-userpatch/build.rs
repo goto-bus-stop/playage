@@ -1,3 +1,19 @@
+//! The original UserPatch installer works by applying binary patches to an Age of Empires 2
+//! executable.
+//!
+//! This build script reads a UserPatch installer executable, decompresses it using upx, and then
+//! reads through the bytes to find references to the patches that the installer applies. (Most)
+//! patches belong to a feature. Features are identified by calls to their constructor function. All
+//! patches that are referenced _after_ a particular Feature constructor are assumed to belong to
+//! this feature; for the current installer version targeted by this crate, that assumption is
+//! accurate. Patches are referenced by various constructor functions, and are sometimes stored as
+//! hex strings, sometimes as byte arrays. There is a special case for patches that just CALL or JMP
+//! to an address.
+//!
+//! After collecting all the patches, this script normalizes them so they are all a simple offset +
+//! byte array combo. They are serialized to Rust structures and grouped by feature. The output is a
+//! file `injections.rs` that defines a static `FEATURES` variable. We can `include!` that file in
+//! the crate's source code.
 use encoding_rs::UTF_16LE;
 use std::{
     env,
@@ -37,6 +53,7 @@ const ASM_PUSH32: u8 = 0x68;
 /// Opcode for `push` instructions with 8 bit operand.
 const ASM_PUSH8: u8 = 0x6A;
 
+/// Feature data.
 struct Feature {
     name: String,
     optional: bool,
@@ -46,11 +63,21 @@ struct Feature {
     patches: Vec<Patch>,
 }
 
+/// A patch.
 #[derive(Debug)]
 enum Patch {
+    /// Not actually a patch, just metadata that we serialize as a comment
+    /// for manual inspection of the injections.rs file. Sorry…
     Header(String),
+    /// Insert a function call, (at_address, target, padding)
+    ///
+    /// `padding` bytes are filled with NOPs after the newly inserted CALL.
     Call(u32, u32, u32),
+    /// Insert an unconditional jump, (at_address, target, padding)
+    ///
+    /// `padding` bytes are filled with NOPs after the newly inserted JMP.
     Jmp(u32, u32, u32),
+    /// A binary patch, (at_address, bytes)
     Hex(u32, Vec<u8>),
 }
 
@@ -103,8 +130,18 @@ fn is_hex_string(string: &str) -> bool {
 
 /// Find a list of hex code injections that the UserPatch installer does.
 fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
+    // Keeps track of 32 bit and 8 bit literal PUSH calls _only_. These are the instructions
+    // used to put addresses and sizes on the stack before calling feature and patch constructors.
+    // There are more PUSH instructions but the things they push are not interesting.
     let mut stack_args = vec![];
-    let mut latest_named = String::new();
+    // Separately keep track of the most recently constructed string value. Some constructors take
+    // a single string argument, but they PUSH a register to the stack, and that's harder to
+    // follow. Since there aren't any functions that take multiple strings at this time, we can
+    // just use the most recently seen one when we need it.
+    let mut latest_string = String::new();
+
+    // Initialize features with a "pseudo"-feature to collect some of the stray patches that are
+    // not associated with any feature.
     let mut features: Vec<Feature> = vec![Feature {
         name: "Pre-patch".to_string(),
         optional: false,
@@ -114,6 +151,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
         patches: vec![],
     }];
 
+    // Add a patch to the current feature.
     let push_patch = |features: &mut Vec<Feature>, patch| {
         if let Some(feature) = features.last_mut() {
             feature.patches.push(patch);
@@ -122,23 +160,27 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
         }
     };
 
-    for (op, va) in lde::X86.iter(exe, CODE_BASE_ADDRESS) {
+    let mut opcodes = lde::X86.iter(exe, CODE_BASE_ADDRESS);
+    for (op, va) in opcodes {
         match op.read::<u8>(0) {
             ASM_CALL => {
-                let (target, _) = (va + 5).overflowing_add(op.read::<u32>(1));
+                let relative_jmp = op.read::<u32>(1);
+                let (target, _) = (va + 5).overflowing_add(relative_jmp);
                 match target {
+                    // CreateFeature(name, optional, enabled_by_default, always_enabled, affects_sync)
                     FEATURE_ADDRESS => {
                         stack_args.reverse();
                         features.push(Feature {
-                            name: latest_named.clone(),
+                            name: latest_string.clone(),
                             optional: stack_args[0] != 0,
                             enabled_by_default: stack_args[1] != 0,
                             always_enabled: stack_args[2] != 0,
                             affects_sync: stack_args[3] != 0,
                             patches: vec![],
                         });
-                        latest_named.clear();
+                        latest_string.clear();
                     }
+                    // CreateHexPatch(address, "HEXSTRING")
                     HEX_PATCH_ADDRESS => {
                         stack_args.reverse();
                         let patch = read_c_str(exe, stack_args[1] - RDATA_BASE_ADDRESS);
@@ -146,6 +188,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         assert!(is_hex_string(&patch), "unexpected non-hex string");
                         push_patch(&mut features, Patch::Hex(addr, decode_hex(&patch)));
                     }
+                    // CreateBytePatch(address, byte_ptr, byte_len)
                     BYTE_PATCH_ADDRESS => {
                         stack_args.reverse();
                         let start = (stack_args[1] - DATA_BASE_ADDRESS) as usize;
@@ -153,9 +196,10 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         let addr = stack_args[0];
                         push_patch(&mut features, Patch::Hex(addr, patch.to_vec()));
                     }
+                    // CreateHexPatch("Description of the patch", address, "HEXSTRING")
                     NAMED_HEX_PATCH_ADDRESS => {
-                        if !latest_named.is_empty() {
-                            push_patch(&mut features, Patch::Header(latest_named.clone()));
+                        if !latest_string.is_empty() {
+                            push_patch(&mut features, Patch::Header(latest_string.clone()));
                         }
                         stack_args.reverse();
                         let patch = read_c_str(exe, stack_args[1] - RDATA_BASE_ADDRESS);
@@ -163,6 +207,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         assert!(is_hex_string(&patch), "unexpected non-hex string");
                         push_patch(&mut features, Patch::Hex(addr, decode_hex(&patch)));
                     }
+                    // CreateJmpOrCallPatch(address, target, padding, is_jmp)
                     JMP_PATCH_ADDRESS => {
                         stack_args.reverse();
                         let addr = stack_args[0];
@@ -177,22 +222,26 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                             },
                         );
                     }
+                    // CreateString(address_of_utf16_string)
                     STRING_CONSTRUCTOR_ADDRESS16 if stack_args.len() > 0 => {
                         stack_args.reverse();
                         let addr = stack_args[0];
                         if addr > RDATA_BASE_ADDRESS {
-                            latest_named = read_utf16_str(exe, addr - RDATA_BASE_ADDRESS);
+                            latest_string = read_utf16_str(exe, addr - RDATA_BASE_ADDRESS);
                         } else {
-                            latest_named = String::new();
+                            latest_string = String::new();
                         }
                     }
+                    // CreateString(address_of_ansi_string)
                     STRING_CONSTRUCTOR_ADDRESS => {
                         stack_args.reverse();
                         let addr = stack_args[0];
-                        latest_named = read_c_str(exe, addr - RDATA_BASE_ADDRESS);
+                        latest_string = read_c_str(exe, addr - RDATA_BASE_ADDRESS);
                     }
                     _ => {}
                 }
+
+                // Reset current arguments after processing each CALL
                 stack_args.clear();
             }
             ASM_PUSH32 => stack_args.push(op.read::<u32>(1)),
@@ -204,6 +253,9 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
     Ok(features)
 }
 
+/// Unpack a byte array with upx, returning the unpacked bytes.
+///
+/// It requires a upx executable accessible somewhere in the $PATH.
 #[cfg(not(os = "windows"))]
 fn upx_unpack(packed_bytes: &[u8], tempdir: &Path) -> Result<Vec<u8>> {
     fs::write(tempdir.join("packed.exe"), packed_bytes)?;
@@ -228,6 +280,7 @@ fn upx_unpack(packed_bytes: &[u8], tempdir: &Path) -> Result<Vec<u8>> {
     Ok(result)
 }
 
+/// TODO this can honestly probably do the same as the unix version for the most part
 #[cfg(os = "windows")]
 fn upx_unpack(packed_bytes: &[u8], tempdir: &Path) -> Result<Vec<u8>> {
     unimplemented!()
@@ -256,12 +309,14 @@ fn main() -> Result<()> {
         to_addr: u32,
         mut padding: u32,
     ) -> std::io::Result<()> {
+        // Turn into a relative offset
         let bytes = to_addr.overflowing_sub(addr + 5).0.to_le_bytes();
         write!(
             f,
             "    Injection({:#x}, &[{:#04X}, {:#04X}, {:#04X}, {:#04X}, {:#04X}",
             addr, instr, bytes[0], bytes[1], bytes[2], bytes[3],
         )?;
+        // Fill the rest up with NOPs, /((0x66){0,3} 0x90)*/
         while padding > 0 {
             let mut group = if padding > 4 { 4 } else { padding };
             while group > 1 {
