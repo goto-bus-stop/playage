@@ -55,7 +55,7 @@ pub fn get_available_features() -> &'static [Feature] {
     &FEATURES
 }
 
-fn configure_features(options: InstallOptions) -> Vec<Feature> {
+fn configure_features(options: &InstallOptions) -> Vec<Feature> {
     FEATURES
         .iter()
         .cloned()
@@ -121,7 +121,7 @@ fn configure_features(options: InstallOptions) -> Vec<Feature> {
 }
 
 /// Install UserPatch 1.5 into a buffer containing a 1.0c executable.
-pub fn install_into(exe_buffer: &[u8], options: InstallOptions) -> Vec<u8> {
+pub fn install_into(exe_buffer: &[u8], options: &InstallOptions) -> Vec<u8> {
     let features = configure_features(options);
 
     let mut extended_buffer = exe_buffer.to_vec();
@@ -182,13 +182,8 @@ mod tests {
         if let Ok(base) = env::var("AOCDIR") {
             let base = PathBuf::from(base);
             let aoc = read(base.join("Age2_x1/age2_x1.0c.exe")).unwrap();
-            let up15 = install_into(&aoc, InstallOptions::bare());
+            let up15 = install_into(&aoc, &InstallOptions::bare());
             write(base.join("Age2_x1/age2_x1.rs.exe"), &up15).unwrap();
         }
-    }
-
-    #[test]
-    fn get_patch_options_test() {
-        eprintln!("{:#?}", get_available_features());
     }
 }

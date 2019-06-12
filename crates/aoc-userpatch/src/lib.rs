@@ -118,6 +118,8 @@ pub struct InstallOptions {
 }
 
 impl InstallOptions {
+    /// Get install options for the UserPatch 1.5 core feature update, with all optional features
+    /// disabled.
     pub fn bare() -> Self {
         Self {
             interface_style: InterfaceStyle::Centered,
@@ -166,6 +168,24 @@ impl InstallOptions {
 }
 
 impl Default for InstallOptions {
+    /// Create an opinionated set of default install options.
+    ///
+    /// Enabled:
+    ///   - Windowed mode (if on Windows)
+    ///   - Extended population caps
+    ///   - Animated water
+    ///   - Precision scrolling
+    ///   - Shift group append
+    ///   - Hotkeys activate on keydown
+    ///   - New savegame file name format
+    ///   - Moving water
+    ///   - Weather
+    ///   - Custom terrain support
+    ///   - Terrain underwater
+    ///   - Touch screen controls
+    ///   - Store spec addresses
+    ///   - Custom wine chatbox (if not on Windows)
+    ///   - Extended hotkeys
     fn default() -> Self {
         Self {
             interface_style: InterfaceStyle::Widescreen,
