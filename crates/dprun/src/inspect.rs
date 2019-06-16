@@ -1,11 +1,11 @@
-use crate::structs::GUID;
 use bytes::{ByteOrder, Bytes, LittleEndian};
 use std::mem;
+use uuid::Uuid;
 
-fn read_guid(slice: &[u8]) -> GUID {
+fn read_guid(slice: &[u8]) -> Uuid {
     let mut guid = [0; 16];
     guid.copy_from_slice(slice);
-    unsafe { mem::transmute(guid) }
+    Uuid::from_bytes(guid)
 }
 
 struct CmdId(u16);
@@ -25,8 +25,8 @@ struct ProtocolMessage {
 
 #[derive(Debug)]
 enum Command {
-    EnumSessionsReply(String, GUID),
-    EnumSessions(GUID, u32),
+    EnumSessionsReply(String, Uuid),
+    EnumSessions(Uuid, u32),
     RequestPlayerId(u32),
     RequestPlayerReply(u32),
     CreatePlayer(u32, String),
@@ -127,9 +127,7 @@ fn parse_message(mut message: Bytes) -> ProtocolMessage {
 }
 
 pub fn print_network_message(mut message: Bytes) {
-    let mut header = [0; 16];
-    header.copy_from_slice(&message.split_to(16));
-    let guid: GUID = unsafe { mem::transmute(header) };
+    let guid = read_guid(&message.split_to(16));
     println!("[print_network_message] message from: {:?}", guid);
     println!("{:#?}", parse_message(message));
 }
