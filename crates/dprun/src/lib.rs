@@ -25,9 +25,9 @@ pub use uuid::Uuid as GUID;
 // TODO move these to consts again when uuid has const fns
 lazy_static::lazy_static! {
     /// The GUID of the DPRun Service Provider.
-    static ref GUID_DPRUNSP: Uuid = Uuid::parse_str("B1ED2367-609B-4C5C-8755D2A29BB9A554").unwrap();
+    static ref GUID_DPRUNSP: Uuid = Uuid::parse_str("B1ED2367-609B-4C5C-8755-D2A29BB9A554").unwrap();
     /// The GUID of the DirectPlay address type containing a port number.
-    static ref GUID_INETPORT: Uuid = Uuid::parse_str("E4524541-8EA5-11D1-8A96006097B01411").unwrap();
+    static ref GUID_INETPORT: Uuid = Uuid::parse_str("E4524541-8EA5-11D1-8A96-006097B01411").unwrap();
 }
 
 /// The type of DirectPlay session to create; either joining or hosting a session.
@@ -54,10 +54,7 @@ impl DPGUIDOrNamed {
     /// Turn this GUID or name into a string that can be passed to the dprun CLI.
     fn into_string(self) -> String {
         match self {
-            DPGUIDOrNamed::GUID(guid) => guid
-                .to_hyphenated()
-                .encode_upper(&mut Uuid::encode_buffer())
-                .to_string(),
+            DPGUIDOrNamed::GUID(guid) => to_braced(&guid),
             DPGUIDOrNamed::Named(string) => string,
         }
     }
@@ -324,6 +321,14 @@ impl DPRun {
     }
 }
 
+fn to_braced(uuid: &Uuid) -> String {
+    let mut res = &mut [0u8; 38];
+    res[0] = b'{';
+    res[37] = b'}';
+    uuid.to_hyphenated().encode_upper(&mut res[1..=36]);
+    String::from_utf8_lossy(res).to_string()
+}
+
 /// Run a game using DPRun. The options can be created using DPRunOptions::builder().
 pub fn run(options: DPRunOptions) -> DPRun {
     let mut command = if cfg!(target_os = "windows") {
@@ -339,9 +344,9 @@ pub fn run(options: DPRunOptions) -> DPRun {
     }
 
     match options.session_type {
-        SessionType::Host(Some(guid)) => command.args(&["--host", &guid.to_string()]),
+        SessionType::Host(Some(guid)) => command.args(&["--host", &to_braced(&guid)]),
         SessionType::Host(None) => command.arg("--host"),
-        SessionType::Join(guid) => command.args(&["--join", &guid.to_string()]),
+        SessionType::Join(guid) => command.args(&["--join", &to_braced(&guid)]),
     };
 
     let service_provider = options.service_provider_handler;
@@ -371,7 +376,7 @@ pub fn run(options: DPRunOptions) -> DPRun {
         "--service-provider",
         &options.service_provider.into_string(),
         "--application",
-        &options.application.to_string(),
+        &to_braced(&options.application),
     ]);
 
     for part in options.address {
@@ -409,24 +414,9 @@ mod tests {
 
     #[test]
     fn build_command_line_args() {
-        let dpchat = Uuid::from_fields(
-            0x5BFDB060,
-            0x06A4,
-            0x11D0,
-            &[0x9C, 0x4F, 0x00, 0xA0, 0xC9, 0x05, 0x42, 0x5E],
-        );
-        let tcpip = Uuid::from_fields(
-            0x36E95EE0,
-            0x8577,
-            0x11cf,
-            &[0x96, 0x0c, 0x00, 0x80, 0xc7, 0x53, 0x4e, 0x82],
-        );
-        let inet_port = Uuid::from_fields(
-            0xe4524541,
-            0x8ea5,
-            0x11d1,
-            &[0x8a, 0x96, 0x00, 0x60, 0x97, 0xb0, 0x14, 0x11],
-        );
+        let dpchat = Uuid::parse_str("5BFDB060-06A4-11d0-9C4F-00A0C905425E").unwrap();
+        let tcpip = Uuid::parse_str("36E95EE0-8577-11cf-960c-0080c7534e82").unwrap();
+        let inet_port = Uuid::parse_str("E4524541-8EA5-11d1-8A96-006097B01411").unwrap();
 
         let options = DPRunOptions::builder()
             .host(None)
@@ -439,9 +429,9 @@ mod tests {
 
         let dp_run = run(options);
         if cfg!(target_os = "windows") {
-            assert_eq!(dp_run.command(), r#""dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11cf-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11d0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11d1-8A96-006097B01411}=i:2197""#);
+            assert_eq!(dp_run.command(), r#""dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11CF-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11D0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11D1-8A96-006097B01411}=i:2197""#);
         } else {
-            assert_eq!(dp_run.command(), r#""wine" "dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11cf-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11d0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11d1-8A96-006097B01411}=i:2197""#);
+            assert_eq!(dp_run.command(), r#""wine" "dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11CF-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11D0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11D1-8A96-006097B01411}=i:2197""#);
         }
     }
 }
