@@ -1,6 +1,6 @@
-use wololokingdoms::{ConvertOptions, ConvertListener, Converter};
 use std::path::PathBuf;
 use structopt::StructOpt;
+use wololokingdoms::{ConvertListener, ConvertOptions, Converter};
 
 /// WololoKingdoms Installer CLI.
 #[derive(StructOpt, Debug)]

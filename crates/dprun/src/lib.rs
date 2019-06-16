@@ -20,6 +20,7 @@ use uuid::Uuid;
 
 pub use crate::server::{AppController, SPFuture, ServiceProvider};
 pub use crate::structs::DPID;
+pub use uuid::Uuid as GUID;
 
 // TODO move these to consts again when uuid has const fns
 lazy_static::lazy_static! {

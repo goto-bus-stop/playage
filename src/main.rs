@@ -1,11 +1,11 @@
 use dprun::{run, DPAddressValue, DPRunOptions, GUID};
 use dpsp_libp2p::Libp2pSP;
 use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
-use rand::{thread_rng, Rng};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-use tokio::prelude::*;
-use tokio::timer::Delay;
+use std::{
+    sync::{Arc, Mutex},
+    time::{Duration, Instant},
+};
+use tokio::{prelude::*, timer::Delay};
 
 #[derive(PartialEq, Eq)]
 enum SPType {
@@ -16,32 +16,8 @@ enum SPType {
 
 /// Test app that sets up a DPChat session.
 fn main() {
-    let dpchat = GUID(
-        0x5BFD_B060,
-        0x06A4,
-        0x11D0,
-        0x9C,
-        0x4F,
-        0x00,
-        0xA0,
-        0xC9,
-        0x05,
-        0x42,
-        0x5E,
-    );
-    let test_session_id = GUID(
-        0x5BFD_B060,
-        0x06A4,
-        0x11D0,
-        0x9C,
-        0x4F,
-        0x00,
-        0xA0,
-        0xC9,
-        0x05,
-        0x42,
-        0x5E,
-    );
+    let dpchat = GUID::parse_str("5BFDB060-06A4-11D0-9C4F00A0C905425E").unwrap();
+    let test_session_id = GUID::parse_str("5BFDB060-06A4-11D0-9C4F00A0C905425E").unwrap();
 
     let dprun_dir = std::env::current_dir().unwrap().join("../dprun/bin/debug");
 
@@ -59,10 +35,8 @@ fn main() {
         .application(dpchat)
         .cwd(dprun_dir.clone());
 
-    let mut host_guid = [0u8; 16];
-    let mut join_guid = [0u8; 16];
-    thread_rng().fill(&mut host_guid);
-    thread_rng().fill(&mut join_guid);
+    let host_guid = GUID::new_v4();
+    let join_guid = GUID::new_v4();
 
     match use_sp {
         SPType::Local => {
@@ -72,24 +46,24 @@ fn main() {
                 .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
                 .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
                 .named_address_part("INetPort", DPAddressValue::Number(2197))
-                .named_address_part("SelfID", DPAddressValue::Binary(host_guid.to_vec()));
+                .named_address_part("SelfID", DPAddressValue::Binary(host_guid.as_bytes().to_vec()));
             join_options = join_options
                 .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
                 .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
                 .named_address_part("INetPort", DPAddressValue::Number(2198))
-                .named_address_part("SelfID", DPAddressValue::Binary(join_guid.to_vec()));
+                .named_address_part("SelfID", DPAddressValue::Binary(join_guid.as_bytes().to_vec()));
         }
         SPType::P2P => {
             host_options = host_options
                 .service_provider_handler(Box::new(Libp2pSP::default()))
                 .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
                 .named_address_part("INetPort", DPAddressValue::Number(2197))
-                .named_address_part("SelfID", DPAddressValue::Binary(host_guid.to_vec()));
+                .named_address_part("SelfID", DPAddressValue::Binary(host_guid.as_bytes().to_vec()));
             join_options = join_options
                 .service_provider_handler(Box::new(Libp2pSP::default()))
                 .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
                 .named_address_part("INetPort", DPAddressValue::Number(2198))
-                .named_address_part("SelfID", DPAddressValue::Binary(join_guid.to_vec()));
+                .named_address_part("SelfID", DPAddressValue::Binary(join_guid.as_bytes().to_vec()));
         }
         SPType::TCPIP => {
             host_options = host_options
