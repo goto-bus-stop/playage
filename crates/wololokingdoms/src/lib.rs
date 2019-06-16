@@ -210,7 +210,9 @@ impl ConvertContext {
     }
 
     unsafe fn from_ptr<'a>(ptr: *mut std::os::raw::c_void) -> &'a mut Self {
-        (ptr as *mut ConvertContext).as_mut().expect("ConvertContext was null; this is a bug")
+        (ptr as *mut ConvertContext)
+            .as_mut()
+            .expect("ConvertContext was null; this is a bug")
     }
 }
 
@@ -241,8 +243,7 @@ impl Converter {
         Self {
             ptr: unsafe {
                 let mut_ref = Pin::as_mut(&mut context);
-                let context_ptr = Pin::get_unchecked_mut(mut_ref)
-                    as *mut ConvertContext
+                let context_ptr = Pin::get_unchecked_mut(mut_ref) as *mut ConvertContext
                     as *mut std::os::raw::c_void;
                 ffi::wkconverter_create(settings.0, context_ptr)
             },
