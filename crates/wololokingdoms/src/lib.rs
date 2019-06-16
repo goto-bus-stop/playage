@@ -4,7 +4,9 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::windows::ffi::OsStrExt;
 use std::{
     ffi::{CStr, CString},
+    marker::PhantomPinned,
     path::Path,
+    pin::Pin,
     ptr,
 };
 
@@ -39,12 +41,12 @@ impl IndexType {
     }
 }
 
-pub struct WKSettingsBuilder(ffi::wksettings_t);
-pub struct WKSettings(ffi::wksettings_t);
+pub struct ConvertOptionsBuilder(ffi::wksettings_t);
+pub struct ConvertOptions(ffi::wksettings_t);
 
-impl WKSettingsBuilder {
+impl ConvertOptionsBuilder {
     fn new() -> Self {
-        WKSettingsBuilder(unsafe { ffi::wksettings_create() })
+        ConvertOptionsBuilder(unsafe { ffi::wksettings_create() })
     }
 
     pub fn copy_maps(mut self, enabled: bool) -> Self {
@@ -139,15 +141,15 @@ impl WKSettingsBuilder {
         self
     }
 
-    pub fn build(mut self) -> WKSettings {
+    pub fn build(mut self) -> ConvertOptions {
         assert!(!self.0.is_null());
-        let inst = WKSettings(self.0);
+        let inst = ConvertOptions(self.0);
         self.0 = ptr::null_mut();
         inst
     }
 }
 
-impl Drop for WKSettingsBuilder {
+impl Drop for ConvertOptionsBuilder {
     fn drop(&mut self) {
         if !self.0.is_null() {
             unsafe {
@@ -158,13 +160,13 @@ impl Drop for WKSettingsBuilder {
     }
 }
 
-impl WKSettings {
-    pub fn builder() -> WKSettingsBuilder {
-        WKSettingsBuilder::new()
+impl ConvertOptions {
+    pub fn builder() -> ConvertOptionsBuilder {
+        ConvertOptionsBuilder::new()
     }
 }
 
-impl Drop for WKSettings {
+impl Drop for ConvertOptions {
     fn drop(&mut self) {
         if !self.0.is_null() {
             unsafe {
@@ -175,27 +177,76 @@ impl Drop for WKSettings {
     }
 }
 
-pub struct WKConverter {
+#[derive(Default)]
+pub struct ConvertListener {
+    on_log: Option<Box<dyn Fn(&str) -> ()>>,
+}
+
+impl ConvertListener {
+    pub fn on_log(&mut self, callback: impl Fn(&str) -> () + 'static) {
+        self.on_log = Some(Box::new(callback));
+    }
+
+    fn log(&self, text: &str) {
+        if let Some(on_log) = &self.on_log {
+            on_log(text);
+        }
+    }
+}
+
+struct ConvertContext {
+    last_error: Option<String>,
+    listener: ConvertListener,
+    _pin: PhantomPinned,
+}
+
+impl ConvertContext {
+    pub fn new(listener: ConvertListener) -> Pin<Box<Self>> {
+        Box::pin(ConvertContext {
+            last_error: Default::default(),
+            listener,
+            _pin: PhantomPinned,
+        })
+    }
+
+    unsafe fn from_ptr<'a>(ptr: *mut std::os::raw::c_void) -> &'a mut Self {
+        (ptr as *mut ConvertContext).as_mut().expect("ConvertContext was null; this is a bug")
+    }
+}
+
+pub struct Converter {
     ptr: ffi::wkconverter_t,
-    settings: WKSettings,
+    context: Pin<Box<ConvertContext>>,
+    settings: ConvertOptions,
 }
 
-extern "C" fn on_log(_: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
+extern "C" fn on_log(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
+    let ctx = unsafe { ConvertContext::from_ptr(ctx) };
     let cstr = unsafe { CStr::from_ptr(msg) };
     let s = cstr.to_str().expect("log message not utf8");
-    println!("log: {}", s);
+    ctx.listener.log(s);
 }
 
-extern "C" fn on_error(_: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
+extern "C" fn on_error(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
+    let ctx = unsafe { ConvertContext::from_ptr(ctx) };
     let cstr = unsafe { CStr::from_ptr(msg) };
     let s = cstr.to_str().expect("error message not utf8");
-    eprintln!("error: {}", s);
+    ctx.last_error = Some(s.to_string());
 }
 
-impl WKConverter {
-    pub fn new(settings: WKSettings) -> Self {
+impl Converter {
+    pub fn new(settings: ConvertOptions, listener: ConvertListener) -> Self {
+        let mut context = ConvertContext::new(listener);
+
         Self {
-            ptr: unsafe { ffi::wkconverter_create(settings.0) },
+            ptr: unsafe {
+                let mut_ref = Pin::as_mut(&mut context);
+                let context_ptr = Pin::get_unchecked_mut(mut_ref)
+                    as *mut ConvertContext
+                    as *mut std::os::raw::c_void;
+                ffi::wkconverter_create(settings.0, context_ptr)
+            },
+            context,
             settings,
         }
     }
@@ -207,16 +258,19 @@ impl WKConverter {
         };
 
         let res = unsafe { ffi::wkconverter_run(self.ptr) };
+        let context = Pin::as_mut(&mut self.context);
+        let context = unsafe { Pin::get_unchecked_mut(context) };
 
         if res != 0 {
-            Err("unk".to_string())
+            let err = context.last_error.take().unwrap_or("unk".to_string());
+            Err(err)
         } else {
             Ok(())
         }
     }
 }
 
-impl Drop for WKConverter {
+impl Drop for Converter {
     fn drop(&mut self) {
         if !self.ptr.is_null() {
             unsafe {
