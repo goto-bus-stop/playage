@@ -3,6 +3,8 @@ use cmake::Config;
 use std::{env, path::PathBuf};
 
 fn main() {
+    println!("cargo:rerun-if-changed=../../third_party/wololokingdoms/libwololokingdoms");
+
     let dst = Config::new("../../third_party/wololokingdoms/libwololokingdoms")
         .define("WK_STATIC_BUILD", "1")
         .build_target("all")
@@ -16,6 +18,8 @@ fn main() {
     println!("cargo:rustc-link-lib=static=wololokingdoms");
     println!("cargo:rustc-link-lib=static=genieutils");
     println!("cargo:rustc-link-lib=dylib=stdc++");
+    println!("cargo:rustc-link-lib=dylib=stdc++fs");
+    println!("cargo:rustc-link-lib=dylib=z");
 
     Builder::default()
         .header("ffi.h")
