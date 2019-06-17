@@ -177,31 +177,47 @@ impl Drop for ConvertOptions {
     }
 }
 
-#[derive(Default)]
-pub struct ConvertListener {
-    on_log: Option<Box<dyn Fn(&str) -> ()>>,
+pub trait ConvertListener {
+    fn log(&mut self, text: &str) {}
+    fn set_info(&mut self, text: &str) {}
+    fn progress(&mut self, progress: f32) {}
+    fn finished(&mut self) {}
 }
 
-impl ConvertListener {
-    pub fn on_log(&mut self, callback: impl Fn(&str) -> () + 'static) {
-        self.on_log = Some(Box::new(callback));
+pub struct Listener {
+    inner: Box<dyn ConvertListener>,
+}
+
+impl Listener {
+    fn new(inner: Box<dyn ConvertListener>) -> Self {
+        Self { inner }
     }
 
-    fn log(&self, text: &str) {
-        if let Some(on_log) = &self.on_log {
-            on_log(text);
-        }
+    fn log(&mut self, text: &str) {
+        self.inner.log(text);
+    }
+
+    fn set_info(&mut self, text: &str) {
+        self.inner.set_info(text);
+    }
+
+    fn progress(&mut self, percent: i32) {
+        self.inner.progress((percent as f32) / 100.0);
+    }
+
+    fn finish(&mut self) {
+        self.inner.finished()
     }
 }
 
 struct ConvertContext {
     last_error: Option<String>,
-    listener: ConvertListener,
+    listener: Listener,
     _pin: PhantomPinned,
 }
 
 impl ConvertContext {
-    pub fn new(listener: ConvertListener) -> Pin<Box<Self>> {
+    pub fn new(listener: Listener) -> Pin<Box<Self>> {
         Box::pin(ConvertContext {
             last_error: Default::default(),
             listener,
@@ -229,6 +245,18 @@ extern "C" fn on_log(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c
     ctx.listener.log(s);
 }
 
+extern "C" fn on_set_info(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
+    let ctx = unsafe { ConvertContext::from_ptr(ctx) };
+    let cstr = unsafe { CStr::from_ptr(msg) };
+    let s = cstr.to_str().expect("info message not utf8");
+    ctx.listener.set_info(s);
+}
+
+extern "C" fn on_progress(ctx: *mut std::os::raw::c_void, percent: i32) {
+    let ctx = unsafe { ConvertContext::from_ptr(ctx) };
+    ctx.listener.progress(percent);
+}
+
 extern "C" fn on_error(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
     let ctx = unsafe { ConvertContext::from_ptr(ctx) };
     let cstr = unsafe { CStr::from_ptr(msg) };
@@ -236,8 +264,14 @@ extern "C" fn on_error(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw:
     ctx.last_error = Some(s.to_string());
 }
 
+extern "C" fn on_finished(ctx: *mut std::os::raw::c_void) {
+    let ctx = unsafe { ConvertContext::from_ptr(ctx) };
+    ctx.listener.finish();
+}
+
 impl Converter {
-    pub fn new(settings: ConvertOptions, listener: ConvertListener) -> Self {
+    pub fn new(settings: ConvertOptions, listener: Box<dyn ConvertListener>) -> Self {
+        let listener = Listener::new(listener);
         let mut context = ConvertContext::new(listener);
 
         Self {
@@ -255,7 +289,10 @@ impl Converter {
     pub fn run(&mut self) -> Result<(), String> {
         unsafe {
             ffi::wkconverter_on_log(self.ptr, Some(on_log));
+            ffi::wkconverter_on_set_info(self.ptr, Some(on_set_info));
+            ffi::wkconverter_on_progress(self.ptr, Some(on_progress));
             ffi::wkconverter_on_error(self.ptr, Some(on_error));
+            ffi::wkconverter_on_finished(self.ptr, Some(on_finished));
         };
 
         let res = unsafe { ffi::wkconverter_run(self.ptr) };

@@ -14,6 +14,7 @@ uuid = { version = "^0.7.0", features = ["v4"] }
 wololokingdoms = { path = "crates/wololokingdoms" }
 
 [dev-dependencies]
+progress = "^0.2.0"
 structopt = "^0.2.16"
 
 [workspace]
