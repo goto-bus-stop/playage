@@ -1,0 +1,11 @@
+steps:
+  - script: |
+      curl https://github.com/upx/upx/releases/download/v3.95/upx-3.95-amd64_linux.tar.xz -LsSf | tar xJ
+      echo "##vso[task.setvariable variable=PATH;]$PATH:upx-3.95-amd64_linux"
+    displayName: "Install upx (*nix)"
+    condition: not(eq(variables['Agent.OS'], 'Windows_NT'))
+  - script: |
+      curl https://github.com/upx/upx/releases/download/v3.95/upx-3.95-win64.tar.xz -LsSf | tar xJ
+      echo "##vso[task.setvariable variable=PATH;]$PATH:upx-3.95-win64"
+    displayName: "Install upx (Windows)"
+    condition: not(eq(variables['Agent.OS'], 'Windows_NT'))

@@ -1,0 +1,18 @@
+parameters:
+  rust_version: stable
+
+jobs:
+- job: ${{ parameters.name }}
+  displayName: ${{ parameters.displayName }}
+  pool:
+    vmImage: ubuntu-16.04
+  steps:
+  - template: install-upx.yml
+  - template: install-rust.yml
+
+  - script: cargo check
+    displayName: Check features
+
+  - ${{ if parameters.benches }}:
+    - script: cargo check --benches --all
+      displayName: Check benchmarks

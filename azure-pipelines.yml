@@ -4,41 +4,33 @@ trigger:
   tags:
     include: ['*']
 
-resources:
-  repositories:
-    - repository: templates
-      type: github
-      name: xoac/rust-azure-pipelines
-      ref: refs/tags/v0.0.3
-      endpoint: playage
-
 jobs:
 # Check formatting
-- template: ci/rustfmt.yml@templates
+- template: ci/rustfmt.yml
   parameters:
     name: rustfmt
     displayName: Check formatting
 
 # Cargo check
-- template: ci/cargo-check.yml@templates
+- template: ci/cargo-check.yml
   parameters:
     name: cargo_check
     displayName: Cargo check
 
 # This represents the minimum Rust version supported.
 # Tests are not run as tests may require newer versions of rust.
-- template: ci/cargo-check.yml@templates
+- template: ci/cargo-check.yml
   parameters:
     name: minrust
-    rust_version: 1.31.0 # The 2018 edition
+    rust_version: 1.31.0
     displayName: Check rust min ver
 
 ################
 # Test stage   #
-###############
+################
 
 # Test stable
-- template: ci/test.yml@templates
+- template: ci/test.yml
   parameters:
     dependsOn:
       - cargo_check
@@ -47,7 +39,7 @@ jobs:
     cross: true # Test on Windows and macOS
 
 # Test nightly
-- template: ci/test.yml@templates
+- template: ci/test.yml
   parameters:
     name: cargo_test_nightly
     displayName: Cargo test
@@ -55,7 +47,7 @@ jobs:
 
 # Test cross
 # List of supported targets is available here: https://github.com/rust-embedded/cross#supported-targets
-- template: ci/cargo-cross.yml@templates
+- template: ci/cargo-cross.yml
   parameters:
         name: cargo_cross
         displayName: Cross check and test
@@ -74,7 +66,7 @@ jobs:
 # TODO you need to modify git parameters and specify variable in pipeline. See [README.md](https://github.com/xoac/rust-azure-pipelines/blob/master/README.md)
 
 # Deploy doc
-- template: ci/github-deploy-doc.yml@templates
+- template: ci/github-deploy-doc.yml
   parameters:
     name: github_deploy_doc
     dependsOn:
