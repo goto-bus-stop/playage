@@ -13,8 +13,9 @@ jobs:
   dependsOn:
   - ${{ parameters.dependsOn }}
   steps:
-  - template: install-upx.yml
+  - template: checkout.yml
   - template: install-rust.yml
+  - template: install-upx.yml
     parameters:
       rust_version: ${{ parameters.rust_version}}
   - script: |

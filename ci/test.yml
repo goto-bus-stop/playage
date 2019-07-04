@@ -18,7 +18,9 @@ jobs:
     vmImage: $(vmImage)
 
   steps:
+  - template: checkout.yml
   - template: install-rust.yml
+  - template: install-upx.yml
 
   - script: cargo test
     env:

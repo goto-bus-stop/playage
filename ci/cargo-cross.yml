@@ -11,8 +11,9 @@ jobs:
   pool:
     vmImage: 'ubuntu-16.04'
   steps:
-  - template: install-upx.yml
+  - template: checkout.yml
   - template: install-cross-rust.yml
+  - template: install-upx.yml
 
   # Checking all targets
   - ${{ each check_target in parameters.check_targets }}:
