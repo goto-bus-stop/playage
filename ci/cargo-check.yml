@@ -7,8 +7,8 @@ jobs:
   pool:
     vmImage: ubuntu-16.04
   steps:
-  - template: install-upx.yml
   - template: install-rust.yml
+  - template: install-upx.yml
 
   - script: cargo check
     displayName: Check features
