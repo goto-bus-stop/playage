@@ -37,10 +37,10 @@ jobs:
 - template: ci/test.yml
   parameters:
     dependsOn:
-      - cargo_check
+    - cargo_check
     name: cargo_test_stable
     displayName: Cargo test
-    cross: true # Test on Windows and macOS
+    cross: false # Test on Windows and macOS
 
 # Test nightly
 - template: ci/test.yml
@@ -52,32 +52,15 @@ jobs:
 # Test cross
 # List of supported targets is available here: https://github.com/rust-embedded/cross#supported-targets
 - template: ci/cargo-cross.yml
+  condition: false
   parameters:
-        name: cargo_cross
-        displayName: Cross check and test
-        rust_version: stable # You can specify here beta nightly or even 1.31
-        check_targets:
-          - i686-unknown-freebsd
-          # - thumbv7em-none-eabihf # bare metal require no_std! future enabled.
-        test_targets:
-          - mips-unknown-linux-gnu
-          - armv7-unknown-linux-musleabihf
-          - x86_64-unknown-linux-gnu
-
-###################
-#    DEPLOY PART  #
-###################
-# TODO you need to modify git parameters and specify variable in pipeline. See [README.md](https://github.com/xoac/rust-azure-pipelines/blob/master/README.md)
-
-# Deploy doc
-- template: ci/github-deploy-doc.yml
-  parameters:
-    name: github_deploy_doc
-    dependsOn:
-      - cargo_test_stable
-      - cargo_check
-      - cargo_cross
-    github:
-     user: PlayAge CI
-     email: ci@playage.app
-     repo: https://github.com/playage/playage
+    name: cargo_cross
+    displayName: Cross check and test
+    rust_version: stable # You can specify here beta nightly or even 1.31
+    check_targets:
+    - i686-unknown-freebsd
+    # - thumbv7em-none-eabihf # bare metal require no_std! future enabled.
+    test_targets:
+    - mips-unknown-linux-gnu
+    - armv7-unknown-linux-musleabihf
+    - x86_64-unknown-linux-gnu
