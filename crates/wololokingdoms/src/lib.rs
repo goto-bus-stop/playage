@@ -17,11 +17,14 @@ mod ffi {
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
 
-// TODO make libwk accept wchar_t on windows, then use std::os::windows::ffi::OsStrExt to convert
-// to wchar_t
 #[cfg(not(target_os = "windows"))]
-fn path_to_cstring(path: &Path) -> CString {
+fn path_to_cpath(path: &Path) -> CString {
     CString::new(path.as_os_str().as_bytes()).expect("invalid path")
+}
+
+#[cfg(target_os = "windows")]
+fn path_to_cpath(path: &Path) -> Vec<u16> {
+    path.as_os_str().encode_wide().collect()
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -106,38 +109,38 @@ impl ConvertOptionsBuilder {
     }
 
     pub fn resource_path(mut self, path: &Path) -> Self {
-        let cstr = path_to_cstring(path);
-        unsafe { ffi::wksettings_resource_path(self.0, cstr.as_ptr() as *const i8) };
+        let cstr = path_to_cpath(path);
+        unsafe { ffi::wksettings_resource_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
     pub fn hd_path(mut self, path: &Path) -> Self {
-        let cstr = path_to_cstring(path);
-        unsafe { ffi::wksettings_hd_path(self.0, cstr.as_ptr() as *const i8) };
+        let cstr = path_to_cpath(path);
+        unsafe { ffi::wksettings_hd_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
     pub fn output_path(mut self, path: &Path) -> Self {
-        let cstr = path_to_cstring(path);
-        unsafe { ffi::wksettings_output_path(self.0, cstr.as_ptr() as *const i8) };
+        let cstr = path_to_cpath(path);
+        unsafe { ffi::wksettings_output_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
     pub fn voobly_path(mut self, path: &Path) -> Self {
-        let cstr = path_to_cstring(path);
-        unsafe { ffi::wksettings_voobly_path(self.0, cstr.as_ptr() as *const i8) };
+        let cstr = path_to_cpath(path);
+        unsafe { ffi::wksettings_voobly_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
     pub fn up_path(mut self, path: &Path) -> Self {
-        let cstr = path_to_cstring(path);
-        unsafe { ffi::wksettings_up_path(self.0, cstr.as_ptr() as *const i8) };
+        let cstr = path_to_cpath(path);
+        unsafe { ffi::wksettings_up_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
     pub fn mod_name(mut self, name: &str) -> Self {
         let cstr = CString::new(name).expect("invalid mod name");
-        unsafe { ffi::wksettings_mod_name(self.0, cstr.as_ptr() as *const i8) };
+        unsafe { ffi::wksettings_mod_name(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
