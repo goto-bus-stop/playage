@@ -9,7 +9,7 @@ jobs:
     parameters:
       rust_version: ${{ parameters.rust }}
       components:
-              - clippy
+      - clippy
 
-  - script: cargo clippy --all 
+  - script: cargo clippy --all
     displayName: Run clippy
