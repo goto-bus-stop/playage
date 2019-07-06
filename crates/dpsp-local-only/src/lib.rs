@@ -37,7 +37,7 @@ impl LocalOnlyServer {
     pub fn enum_sessions(&mut self, message: &[u8], requester: AppController) {
         self.enumers.insert(0, requester);
         match self.name_server {
-            Some(ref mut name_server) => name_server.send(message.to_vec()),
+            Some(ref mut name_server) => name_server.send(message.to_vec()).unwrap(),
             None => panic!("EnumSessions'd without a host"),
         };
     }
@@ -45,11 +45,11 @@ impl LocalOnlyServer {
     fn reply(&mut self, id: GUID, data: &[u8]) {
         match self.players.get_mut(&id) {
             Some(player) => {
-                player.send(data.to_vec());
+                player.send(data.to_vec()).unwrap();
             }
             None => {
                 self.enumers.values_mut().for_each(|player| {
-                    player.send(data.to_vec());
+                    player.send(data.to_vec()).unwrap();
                 });
             }
         }
@@ -130,7 +130,7 @@ impl ServiceProvider for LocalOnlySP {
         immediately()
     }
 
-    fn reply(&mut self, controller: AppController, _id: u32, data: ReplyData) -> SPFuture {
+    fn reply(&mut self, _controller: AppController, _id: u32, data: ReplyData) -> SPFuture {
         // println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
         self.server
             .lock()
@@ -139,7 +139,7 @@ impl ServiceProvider for LocalOnlySP {
         immediately()
     }
 
-    fn send(&mut self, controller: AppController, id: u32, data: SendData) -> SPFuture {
+    fn send(&mut self, _controller: AppController, _id: u32, data: SendData) -> SPFuture {
         // println!("[LocalOnlySP::send] Got Send message: {:?}", data);
         self.server
             .lock()

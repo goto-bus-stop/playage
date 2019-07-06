@@ -1,13 +1,16 @@
-use crate::inspect::print_network_message;
-use crate::structs::*;
+use crate::{inspect::print_network_message, structs::*};
 use bytes::{BigEndian, BufMut, ByteOrder, Bytes, BytesMut};
 use futures::sync::mpsc::{channel, Receiver, SendError, Sender};
-use std::net::{IpAddr, Ipv4Addr, SocketAddr};
-use std::sync::{Arc, Mutex};
-use tokio::codec::{Framed, LengthDelimitedCodec};
-use tokio::io::Result;
-use tokio::net::{TcpListener, TcpStream};
-use tokio::prelude::*;
+use std::{
+    net::{IpAddr, Ipv4Addr, SocketAddr},
+    sync::{Arc, Mutex},
+};
+use tokio::{
+    codec::{Framed, LengthDelimitedCodec},
+    io::Result,
+    net::{TcpListener, TcpStream},
+    prelude::*,
+};
 
 #[derive(Debug)]
 pub enum ControlMessage {
@@ -21,11 +24,12 @@ pub enum AppMessage {
     Send(u32, u32, Vec<u8>),
 }
 
+type AnyBoxedFuture = Box<dyn Future<Item = (), Error = std::io::Error> + Send>;
 pub struct SPFuture {
-    inner: Box<dyn Future<Item = (), Error = std::io::Error> + Send>,
+    inner: AnyBoxedFuture,
 }
 impl SPFuture {
-    pub fn new(inner: Box<dyn Future<Item = (), Error = std::io::Error> + Send>) -> Self {
+    pub fn new(inner: AnyBoxedFuture) -> Self {
         Self { inner }
     }
 }
