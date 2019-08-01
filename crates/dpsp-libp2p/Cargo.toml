@@ -6,6 +6,6 @@ edition = "2018"
 
 [dependencies]
 dprun = { path = "../dprun" }
-libp2p = { git = "https://github.com/libp2p/rust-libp2p" }
+libp2p = "^0.10.0"
 futures = "^0.1.0"
 tokio = "^0.1.0"

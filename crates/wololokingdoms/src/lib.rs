@@ -28,7 +28,7 @@ fn path_to_cpath(path: &Path) -> Vec<u16> {
 }
 
 #[derive(Debug, Clone, Copy)]
-enum IndexType {
+pub enum IndexType {
     IndexOnly,
     Expansion,
     Terrain,
@@ -181,9 +181,9 @@ impl Drop for ConvertOptions {
 }
 
 pub trait ConvertListener {
-    fn log(&mut self, text: &str) {}
-    fn set_info(&mut self, text: &str) {}
-    fn progress(&mut self, progress: f32) {}
+    fn log(&mut self, _text: &str) {}
+    fn set_info(&mut self, _text: &str) {}
+    fn progress(&mut self, _progress: f32) {}
     fn finished(&mut self) {}
 }
 
@@ -238,7 +238,8 @@ impl ConvertContext {
 pub struct Converter {
     ptr: ffi::wkconverter_t,
     context: Pin<Box<ConvertContext>>,
-    settings: ConvertOptions,
+    /// Keep a this around while the converter lives, so it isn't dropped too early.
+    _settings: ConvertOptions,
 }
 
 extern "C" fn on_log(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
@@ -285,7 +286,7 @@ impl Converter {
                 ffi::wkconverter_create(settings.0, context_ptr)
             },
             context,
-            settings,
+            _settings: settings,
         }
     }
 

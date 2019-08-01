@@ -1,7 +1,5 @@
 use bytes::Buf;
-use std::fmt::{Debug, Display, Formatter, Result as FormatResult};
-use std::io::Cursor;
-use std::mem;
+use std::{io::Cursor, mem};
 use uuid::Uuid;
 
 pub type DPID = i32;
@@ -109,7 +107,7 @@ impl ReplyData {
     pub fn parse(bytes: &[u8]) -> Self {
         let mut read = Cursor::new(bytes);
 
-        let mut reply_to = read_guid(&mut read);
+        let reply_to = read_guid(&mut read);
 
         let name_server_id = read.get_i32_le();
         let message_size = read.get_i32_le();

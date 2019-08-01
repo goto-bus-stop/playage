@@ -16,8 +16,8 @@ enum SPType {
 
 /// Test app that sets up a DPChat session.
 fn main() {
-    let dpchat = GUID::parse_str("5BFDB060-06A4-11D0-9C4F00A0C905425E").unwrap();
-    let test_session_id = GUID::parse_str("5BFDB060-06A4-11D0-9C4F00A0C905425E").unwrap();
+    let dpchat = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E").unwrap();
+    let test_session_id = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E").unwrap();
 
     let dprun_dir = std::env::current_dir().unwrap().join("../dprun/bin/debug");
 

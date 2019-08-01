@@ -1,8 +1,8 @@
 use dprun::{structs, AppController, SPFuture, ServiceProvider};
 use futures::{future::poll_fn, future::FutureResult, prelude::*};
 use libp2p::{
-    core::upgrade, core::UpgradeInfo, identity::Keypair, mdns::Mdns, secio::SecioConfig,
-    InboundUpgrade, Multiaddr, OutboundUpgrade, Swarm, Transport,
+    core::upgrade, core::UpgradeInfo, identity::Keypair, mdns::Mdns, InboundUpgrade, Multiaddr,
+    OutboundUpgrade, Swarm,
 };
 use tokio::prelude::*;
 
@@ -13,7 +13,9 @@ pub enum EnumSessionsError {
 
 impl std::fmt::Display for EnumSessionsError {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        write!(f, "EnumSessionsError::Any")
+        match self {
+            EnumSessionsError::Any => write!(f, "EnumSessionsError::Any"),
+        }
     }
 }
 
@@ -90,7 +92,7 @@ impl Libp2pSP {
 impl ServiceProvider for Libp2pSP {
     fn enum_sessions(
         &mut self,
-        controller: AppController,
+        _controller: AppController,
         _id: u32,
         data: structs::EnumSessionsData,
     ) -> SPFuture {
@@ -98,8 +100,8 @@ impl ServiceProvider for Libp2pSP {
         SPFuture::new(Box::new(future::finished(())))
     }
 
-    fn open(&mut self, controller: AppController, _id: u32, data: structs::OpenData) -> SPFuture {
-        let transport = libp2p::build_tcp_ws_secio_mplex_yamux(self.local_key.clone());
+    fn open(&mut self, _controller: AppController, _id: u32, _data: structs::OpenData) -> SPFuture {
+        let transport = libp2p::build_development_transport(self.local_key.clone());
         // how to make this work?
         // .with_upgrade(EnumSessionsUpgrade);
         let mut swarm = Swarm::new(
@@ -108,7 +110,7 @@ impl ServiceProvider for Libp2pSP {
             self.local_key.public().into_peer_id(),
         );
 
-        let addr = Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse().unwrap()).unwrap();
+        let _addr = Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse().unwrap()).unwrap();
 
         if let Some(dial_addr) = &self.address {
             Swarm::dial_addr(&mut swarm, dial_addr.clone()).unwrap();
@@ -122,18 +124,23 @@ impl ServiceProvider for Libp2pSP {
 
     fn create_player(
         &mut self,
-        controller: AppController,
+        _controller: AppController,
         _id: u32,
-        data: structs::CreatePlayerData,
+        _data: structs::CreatePlayerData,
     ) -> SPFuture {
         SPFuture::new(Box::new(future::finished(())))
     }
 
-    fn reply(&mut self, controller: AppController, _id: u32, data: structs::ReplyData) -> SPFuture {
+    fn reply(
+        &mut self,
+        _controller: AppController,
+        _id: u32,
+        _data: structs::ReplyData,
+    ) -> SPFuture {
         SPFuture::new(Box::new(future::finished(())))
     }
 
-    fn send(&mut self, controller: AppController, _id: u32, data: structs::SendData) -> SPFuture {
+    fn send(&mut self, _controller: AppController, _id: u32, _data: structs::SendData) -> SPFuture {
         SPFuture::new(Box::new(future::finished(())))
     }
 }
