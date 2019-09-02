@@ -4,7 +4,7 @@ use uuid::Uuid;
 
 pub type DPID = i32;
 
-fn read_guid(read: &mut Buf) -> Uuid {
+fn read_guid(read: &mut dyn Buf) -> Uuid {
     let mut guid = [0; 16];
     read.copy_to_slice(&mut guid);
     Uuid::from_bytes(guid)

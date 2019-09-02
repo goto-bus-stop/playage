@@ -1,5 +1,5 @@
 use bytes::{ByteOrder, Bytes, LittleEndian};
-use std::mem;
+
 use uuid::Uuid;
 
 fn read_guid(slice: &[u8]) -> Uuid {

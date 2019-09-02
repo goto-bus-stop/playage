@@ -128,7 +128,7 @@ impl AppController {
 }
 
 fn handle_message(
-    service_provider: Arc<Mutex<Box<ServiceProvider>>>,
+    service_provider: Arc<Mutex<Box<dyn ServiceProvider>>>,
     controller: &mut AppController,
     id: u32,
     method: &[u8],
@@ -186,7 +186,7 @@ fn handle_message(
 }
 
 fn handle_connection(
-    service_provider: Arc<Mutex<Box<ServiceProvider>>>,
+    service_provider: Arc<Mutex<Box<dyn ServiceProvider>>>,
     sock: TcpStream,
 ) -> Result<()> {
     sock.set_nodelay(true)?;
@@ -252,11 +252,11 @@ pub struct HostServer {
     address: SocketAddr,
     controller: ServerController,
     receiver: Receiver<ControlMessage>,
-    service_provider: Box<ServiceProvider>,
+    service_provider: Box<dyn ServiceProvider>,
 }
 
 impl HostServer {
-    pub fn new(port: u16, service_provider: Box<ServiceProvider>) -> Self {
+    pub fn new(port: u16, service_provider: Box<dyn ServiceProvider>) -> Self {
         let address = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
         let (controller, receiver) = ServerController::create();
 
@@ -281,7 +281,7 @@ impl HostServer {
         let client = TcpListener::bind(&self.address)?;
 
         let service_provider = Arc::new(Mutex::new(self.service_provider));
-        let server_controller = self.controller.clone();
+        let _server_controller = self.controller.clone();
         let control_messages = self
             .receiver
             .map(EventType::Control)
