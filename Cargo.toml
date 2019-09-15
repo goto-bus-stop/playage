@@ -6,6 +6,7 @@ edition = "2018"
 
 [dependencies]
 aoc-userpatch = { path = "crates/aoc-userpatch" }
+aoc-spectate = { path = "crates/aoc-spectate" }
 dprun = { path = "crates/dprun" }
 dpsp-local-only = { path = "crates/dpsp-local-only" }
 dpsp-libp2p = { path = "crates/dpsp-libp2p" }
@@ -16,6 +17,8 @@ wololokingdoms = { path = "crates/wololokingdoms" }
 [dev-dependencies]
 progress = "^0.2.0"
 structopt = "^0.2.16"
+async-std = "0.99"
+futures-preview = { version = "0.3.0-alpha.18", features = [ "async-await", "nightly" ] }
 
 [workspace]
 members = [

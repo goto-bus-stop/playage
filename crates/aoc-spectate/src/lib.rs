@@ -1,7 +1,6 @@
-use std::io::{Result, Write};
-use std::net::SocketAddr;
-use tokio::net::TcpStream;
-use tokio::prelude::*;
+use async_std::{io::Result, net::TcpStream};
+use futures::prelude::*;
+use std::{io::Write as _, net::SocketAddr};
 
 #[derive(Debug, Clone)]
 pub struct SpectateHeader {
@@ -37,11 +36,11 @@ impl SpectateHeader {
     pub fn to_vec(&self) -> Vec<u8> {
         let mut bytes = Vec::with_capacity(256);
         // Not like these can really fail
-        bytes.write_all(self.game_name.as_bytes()).unwrap();
+        std::io::Write::write_all(&mut bytes, self.game_name.as_bytes()).unwrap();
         bytes.extend(vec![0; 32 - bytes.len()]);
-        bytes.write_all(self.file_type.as_bytes()).unwrap();
+        std::io::Write::write_all(&mut bytes, self.file_type.as_bytes()).unwrap();
         bytes.extend(vec![0; 64 - bytes.len()]);
-        bytes.write_all(self.player_name.as_bytes()).unwrap();
+        std::io::Write::write_all(&mut bytes, self.player_name.as_bytes()).unwrap();
         bytes.extend(vec![0; 256 - bytes.len()]);
         bytes
     }
@@ -49,27 +48,54 @@ impl SpectateHeader {
 
 pub struct SpectateSession {
     header: SpectateHeader,
-    source: Box<dyn AsyncRead>,
+    source: Box<dyn AsyncRead + Send + Unpin>,
 }
 
 impl SpectateSession {
-    pub fn connect_local() -> impl Future<Item = SpectateSession, Error = std::io::Error> {
+    pub async fn connect_local() -> Result<SpectateSession> {
         let addr = "127.0.0.1:53754".parse::<SocketAddr>().unwrap();
-        let stream = TcpStream::connect(&addr);
-        stream.and_then(move |stream| Self::connect_stream(Box::new(stream)))
+        let stream = TcpStream::connect(&addr).await?;
+        Self::connect_stream(Box::new(stream)).await
     }
 
-    pub fn connect_stream(
-        stream: Box<dyn AsyncRead>,
-    ) -> impl Future<Item = SpectateSession, Error = std::io::Error> {
-        let header = vec![0; 256];
+    pub async fn connect_stream(
+        mut stream: Box<dyn AsyncRead + Send + Unpin>,
+    ) -> Result<SpectateSession> {
+        let mut header = [0; 256];
+        stream.read_exact(&mut header).await?;
 
-        tokio::io::read_exact(stream, header).and_then(move |(stream, header)| {
-            future::result(SpectateHeader::parse(&header)).map(move |header| SpectateSession {
-                header,
-                source: stream,
-            })
+        let header = SpectateHeader::parse(&header)?;
+        Ok(SpectateSession {
+            header,
+            source: stream,
         })
+    }
+
+    pub fn game_name(&self) -> &str {
+        &self.header.game_name
+    }
+
+    pub fn file_type(&self) -> &str {
+        &self.header.file_type
+    }
+
+    pub fn player_name(&self) -> &str {
+        &self.header.player_name
+    }
+
+    pub async fn read_rec_header(&mut self) -> Result<(usize, Vec<u8>)> {
+        let mut size = [0; 4];
+        self.source.read_exact(&mut size[..]).await?;
+        let size = u32::from_le_bytes(size) as usize;
+
+        let mut header: Vec<u8> = vec![0; size + 4];
+        self.source.read_exact(&mut header).await?;
+
+        Ok((size, header))
+    }
+
+    pub fn stream(&mut self) -> &mut Box<dyn AsyncRead + Send + Unpin> {
+        &mut self.source
     }
 }
 

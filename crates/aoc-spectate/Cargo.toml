@@ -5,5 +5,5 @@ authors = ["Renée Kooi <renee@kooi.me>"]
 edition = "2018"
 
 [dependencies]
-futures = "^0.1.29"
-tokio = "^0.1.0"
+async-std = "0.99"
+futures-preview = { version = "0.3.0-alpha.18", features = [ "async-await", "nightly" ] }
