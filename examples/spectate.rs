@@ -8,7 +8,7 @@ use async_std::{
 use std::{
     io,
     path::{Path, PathBuf},
-    process::{Command, Child},
+    process::{Child, Command},
     sync::{
         atomic::{AtomicBool, Ordering},
         Arc,
@@ -31,14 +31,15 @@ struct Cli {
 }
 
 #[cfg(target_os = "windows")]
-fn start_aoc(basedir: &Path, spec_file: &Path) -> io::Result<Child> {
+fn start_aoc(basedir: &Path, game_name: &str, spec_file: &Path) -> io::Result<Child> {
     Command::new(basedir.join("Age2_x1/age2_x1.5.exe"))
-        .arg(format!(r#""{}""#, to_wine(spec_file)))
+        .arg(format!("GAME={}", game_name))
+        .arg(format!(r#""{}""#, spec_file.to_string_lossy()))
         .spawn()
 }
 
 #[cfg(not(target_os = "windows"))]
-fn start_aoc(basedir: &Path, spec_file: &Path) -> io::Result<Child> {
+fn start_aoc(basedir: &Path, game_name: &str, spec_file: &Path) -> io::Result<Child> {
     fn to_wine(path: &Path) -> String {
         let stdout = Command::new("winepath")
             .args(&["-w", &path.to_string_lossy()])
@@ -51,13 +52,10 @@ fn start_aoc(basedir: &Path, spec_file: &Path) -> io::Result<Child> {
             .to_string()
     }
 
+    let aoc_path = basedir.join("Age2_x1/age2_x1.5.exe");
     Command::new("wine")
-        .arg(
-            basedir
-                .join("Age2_x1/age2_x1.5.exe")
-                .to_string_lossy()
-                .to_string(),
-        )
+        .arg(aoc_path.to_string_lossy().to_string())
+        .arg(format!("GAME={}", game_name))
         .arg(format!(r#""{}""#, to_wine(spec_file)))
         .spawn()
 }
@@ -87,8 +85,10 @@ async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let running = Arc::new(AtomicBool::new(true));
     let thread = thread::spawn({
         let running = Arc::clone(&running);
+        let game_name = sesh.game_name().to_string();
         move || {
-            let mut aoc = start_aoc(&args.game_path, &spec_file).expect("could not start aoc");
+            let mut aoc =
+                start_aoc(&args.game_path, &game_name, &spec_file).expect("could not start aoc");
             let result = aoc.wait();
             running.store(false, Ordering::SeqCst);
             result.unwrap();
