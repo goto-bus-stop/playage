@@ -1,16 +1,29 @@
+#![deny(future_incompatible)]
+#![deny(nonstandard_style)]
+#![deny(rust_2018_idioms)]
+#![deny(unsafe_code)]
+#![warn(missing_docs)]
+#![warn(unused)]
+
 use async_std::{io::Result, net::TcpStream};
 use futures::prelude::*;
 use std::{io::Write as _, net::SocketAddr};
 
+/// Holder for metadata from the spectator stream header.
 #[derive(Debug, Clone)]
 pub struct SpectateHeader {
-    game_name: String,
-    file_type: String,
-    player_name: String,
+    /// The name of the UserPatch mod.
+    ///
+    /// Passed in as the GAME=$game_name parameter.
+    pub game_name: String,
+    /// Extension for the recorded game file being spectated.
+    pub file_type: String,
+    /// Name of the player the stream is being received from.
+    pub player_name: String,
 }
 
 impl SpectateHeader {
-    pub fn new(game_name: &str, file_type: &str, player_name: &str) -> Self {
+    fn new(game_name: impl ToString, file_type: impl ToString, player_name: impl ToString) -> Self {
         Self {
             game_name: game_name.to_string(),
             file_type: file_type.to_string(),
@@ -52,12 +65,14 @@ pub struct SpectateSession {
 }
 
 impl SpectateSession {
+    /// Connect to a spectator stream on the local machine.
     pub async fn connect_local() -> Result<SpectateSession> {
         let addr = "127.0.0.1:53754".parse::<SocketAddr>().unwrap();
         let stream = TcpStream::connect(&addr).await?;
         Self::connect_stream(Box::new(stream)).await
     }
 
+    /// Wrap a spectator stream.
     pub async fn connect_stream(
         mut stream: Box<dyn AsyncRead + Send + Unpin>,
     ) -> Result<SpectateSession> {
@@ -71,18 +86,25 @@ impl SpectateSession {
         })
     }
 
+    /// Get the name of the UserPatch mod used to play the game being spectated.
     pub fn game_name(&self) -> &str {
         &self.header.game_name
     }
 
+    /// Get the file extension for the recorded game being spectated.
     pub fn file_type(&self) -> &str {
         &self.header.file_type
     }
 
+    /// Get the player name being spectated.
     pub fn player_name(&self) -> &str {
         &self.header.player_name
     }
 
+    /// Read the recorded game file header. Returns (size, header_bytes).
+    ///
+    /// `size` may be different from `header_bytes.len()`, because the `size` value refers to a
+    /// subsection of the header data.
     pub async fn read_rec_header(&mut self) -> Result<(usize, Vec<u8>)> {
         let mut size = [0; 4];
         self.source.read_exact(&mut size[..]).await?;
@@ -94,6 +116,7 @@ impl SpectateSession {
         Ok((size, header))
     }
 
+    /// Get the raw spectator stream.
     pub fn stream(&mut self) -> &mut Box<dyn AsyncRead + Send + Unpin> {
         &mut self.source
     }

@@ -1,36 +1,44 @@
 use aoc_spectate::SpectateSession;
 use async_std::{
     fs::File,
-    io::{copy, Read, Write},
+    io::{Read, Write},
     net::TcpStream,
     task,
 };
 use std::{
+    io,
     path::{Path, PathBuf},
-    process::Command,
+    process::{Command, Child},
+    sync::{
+        atomic::{AtomicBool, Ordering},
+        Arc,
+    },
     thread,
 };
 use structopt::StructOpt;
 
 #[derive(Debug, StructOpt)]
 struct Cli {
-    #[structopt(default_value = "c:\\Program Files (x86)\\Microsoft Games\\Age of Empires II")]
+    /// IP Address to connect to.
+    address: String,
+    /// Path to the Age of Empires 2 game directory.
+    #[structopt(
+        long = "game-path",
+        short = "p",
+        default_value = r"c:\Program Files (x86)\Microsoft Games\Age of Empires II"
+    )]
     game_path: PathBuf,
 }
 
 #[cfg(target_os = "windows")]
-fn start_aoc(basedir: &Path, spec_file: &Path) {
+fn start_aoc(basedir: &Path, spec_file: &Path) -> io::Result<Child> {
+    Command::new(basedir.join("Age2_x1/age2_x1.5.exe"))
+        .arg(format!(r#""{}""#, to_wine(spec_file)))
+        .spawn()
 }
 
 #[cfg(not(target_os = "windows"))]
-fn start_aoc(basedir: &Path, spec_file: &Path) {
-    let mut child = Command::new("wine")
-        .arg(basedir.join("Age2_x1/age2_x1.5.exe").to_string_lossy().to_string())
-        .arg(format!(r#""{}""#, to_wine(spec_file)))
-        .spawn()
-        .expect("Could not start aoc");
-    child.wait().unwrap();
-
+fn start_aoc(basedir: &Path, spec_file: &Path) -> io::Result<Child> {
     fn to_wine(path: &Path) -> String {
         let stdout = Command::new("winepath")
             .args(&["-w", &path.to_string_lossy()])
@@ -42,10 +50,20 @@ fn start_aoc(basedir: &Path, spec_file: &Path) {
             .trim()
             .to_string()
     }
+
+    Command::new("wine")
+        .arg(
+            basedir
+                .join("Age2_x1/age2_x1.5.exe")
+                .to_string_lossy()
+                .to_string(),
+        )
+        .arg(format!(r#""{}""#, to_wine(spec_file)))
+        .spawn()
 }
 
 async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
-    let addr = "192.168.178.16:53754";
+    let addr = format!("{}:53754", args.address);
     let stream = TcpStream::connect(addr).await?;
     let mut sesh = SpectateSession::connect_stream(Box::new(stream)).await?;
 
@@ -53,7 +71,8 @@ async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
     println!("Ext: {}", sesh.file_type());
     println!("Streaming from: {}", sesh.player_name());
 
-    let spec_file = args.game_path
+    let spec_file = args
+        .game_path
         .join("SaveGame")
         .join(format!("spec.{}", sesh.file_type()));
     println!("{:?}", spec_file);
@@ -65,8 +84,15 @@ async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
 
     println!("Starting...");
 
-    let thread = thread::spawn(move || {
-        start_aoc(&args.game_path, &spec_file);
+    let running = Arc::new(AtomicBool::new(true));
+    let thread = thread::spawn({
+        let running = Arc::clone(&running);
+        move || {
+            let mut aoc = start_aoc(&args.game_path, &spec_file).expect("could not start aoc");
+            let result = aoc.wait();
+            running.store(false, Ordering::SeqCst);
+            result.unwrap();
+        }
     });
 
     println!("Receiving recorded game data...");
@@ -78,11 +104,15 @@ async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
         if num == 0 {
             break;
         }
+        if !running.load(Ordering::Relaxed) {
+            println!("AoC exited! Stopping spec feed...");
+            break;
+        }
     }
 
     println!("No more actions! Waiting for AoC to close...");
 
-    thread.join();
+    thread.join().unwrap();
 
     Ok(())
 }
