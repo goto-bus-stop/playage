@@ -1,4 +1,4 @@
-use aoc_spectate::SpectateSession;
+use aoc_spectate::SpectateStream;
 use async_std::{
     fs::File,
     io::{Read, Write},
@@ -63,7 +63,7 @@ fn start_aoc(basedir: &Path, game_name: &str, spec_file: &Path) -> io::Result<Ch
 async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
     let addr = format!("{}:53754", args.address);
     let stream = TcpStream::connect(addr).await?;
-    let mut sesh = SpectateSession::connect_stream(Box::new(stream)).await?;
+    let mut sesh = SpectateStream::connect_stream(Box::new(stream)).await?;
 
     println!("Game: {}", sesh.game_name());
     println!("Ext: {}", sesh.file_type());
@@ -75,8 +75,7 @@ async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
         .join(format!("spec.{}", sesh.file_type()));
     println!("{:?}", spec_file);
     let mut file = File::create(&spec_file).await?;
-    let (size, header) = sesh.read_rec_header().await?;
-    file.write_all(&(size as u32).to_le_bytes()).await?;
+    let header = sesh.read_rec_header().await?;
     file.write_all(&header).await?;
     file.sync_data().await?;
 
