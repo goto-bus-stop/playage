@@ -32,7 +32,11 @@ pub struct SpectateHeader {
 
 impl SpectateHeader {
     /// Create a new spectator stream header with the given data.
-    pub fn new(game_name: impl ToString, file_type: impl ToString, player_name: impl ToString) -> Self {
+    pub fn new(
+        game_name: impl ToString,
+        file_type: impl ToString,
+        player_name: impl ToString,
+    ) -> Self {
         Self {
             game_name: game_name.to_string(),
             file_type: file_type.to_string(),
@@ -106,9 +110,7 @@ impl SpectateStream {
 
     /// Wrap a spectator stream.
     #[inline]
-    pub async fn connect_stream(
-        mut stream: AnyStream,
-    ) -> Result<SpectateStream> {
+    pub async fn connect_stream(mut stream: AnyStream) -> Result<SpectateStream> {
         let mut header = [0; 256];
         stream.read_exact(&mut header).await?;
 

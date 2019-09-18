@@ -1,6 +1,6 @@
 use aoc_spectate::SpectateStream;
 use async_std::{
-    fs::File,
+    fs::{self, File},
     io::{Read, Write},
     net::TcpStream,
     task,
@@ -60,7 +60,27 @@ fn start_aoc(basedir: &Path, game_name: &str, spec_file: &Path) -> io::Result<Ch
         .spawn()
 }
 
+/// Find a UserPatched Age of Empires 2 executable.
+///
+/// `basedir` is the install directory of Age of Empires 2.
+async fn find_aoc(basedir: impl AsRef<Path>) -> io::Result<PathBuf> {
+    let exedir = basedir.as_ref().join("Age2_x1");
+    for candidate in &["age2_x1.5.exe", "age2_x1.exe"] {
+        let filename = exedir.join(candidate);
+        match fs::metadata(&filename).await {
+            Ok(meta) if meta.is_file() => return Ok(filename),
+            _ => (),
+        }
+    }
+    Err(io::Error::new(
+        io::ErrorKind::NotFound,
+        "could not find aoc exe",
+    ))
+}
+
 async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
+    let game_path = find_aoc(&args.game_path).await?;
+
     let addr = format!("{}:53754", args.address);
     let stream = TcpStream::connect(addr).await?;
     let mut sesh = SpectateStream::connect_stream(Box::new(stream)).await?;
@@ -69,9 +89,12 @@ async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
     println!("Ext: {}", sesh.file_type());
     println!("Streaming from: {}", sesh.player_name());
 
-    let spec_file = args
-        .game_path
-        .join("SaveGame")
+    let spec_file = game_path
+        .parent() // "/Age2_x1"
+        .unwrap()
+        .parent() // "/"
+        .unwrap()
+        .join("SaveGame") // "/SaveGame"
         .join(format!("spec.{}", sesh.file_type()));
     println!("{:?}", spec_file);
     let mut file = File::create(&spec_file).await?;
