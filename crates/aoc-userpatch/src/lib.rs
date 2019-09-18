@@ -1,5 +1,10 @@
 mod patch;
 
+use std::{
+    fmt::{self, Display, Formatter},
+    error::Error,
+    str::FromStr,
+};
 pub use patch::install_into;
 
 /// Interface style.
@@ -13,14 +18,28 @@ pub enum InterfaceStyle {
     Widescreen,
 }
 
-impl std::str::FromStr for InterfaceStyle {
-    type Err = &'static str;
+/// Failed to parse interface style from a string.
+///
+/// Got an incorrect interface style value, only "left"/"center"/"wide" are allowed.
+#[derive(Debug)]
+pub struct ParseInterfaceStyleError;
+
+impl Display for ParseInterfaceStyleError {
+    fn fmt(&self, f: &mut Formatter<'_>) -> fmt::Result {
+        write!(f, "Invalid interface style, expected left | center | wide")
+    }
+}
+
+impl Error for ParseInterfaceStyleError {}
+
+impl FromStr for InterfaceStyle {
+    type Err = ParseInterfaceStyleError;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "left" => Ok(InterfaceStyle::LeftAligned),
             "center" => Ok(InterfaceStyle::Centered),
             "wide" | "widescreen" => Ok(InterfaceStyle::Widescreen),
-            _ => Err("Invalid interface style, expected left | center | wide"),
+            _ => Err(ParseInterfaceStyleError),
         }
     }
 }
