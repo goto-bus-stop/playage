@@ -97,7 +97,7 @@ async fn amain(args: Cli) -> Result<(), Box<dyn std::error::Error>> {
     println!("Receiving recorded game data...");
 
     let mut buffer = [0; 16 * 1024];
-    while let Ok(num) = sesh.stream().read(&mut buffer).await {
+    while let Ok(num) = sesh.inner().read(&mut buffer).await {
         file.write_all(&buffer[0..num]).await?;
         file.sync_data().await?;
         if num == 0 {
