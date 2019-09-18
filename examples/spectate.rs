@@ -17,6 +17,7 @@ use std::{
 };
 use structopt::StructOpt;
 
+/// Spectate an ongoing Age of  Empires 2 game.
 #[derive(Debug, StructOpt)]
 struct Cli {
     /// IP Address to connect to.
