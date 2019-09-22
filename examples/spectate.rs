@@ -32,32 +32,22 @@ struct Cli {
 }
 
 #[cfg(target_os = "windows")]
-fn start_aoc(basedir: &Path, game_name: &str, spec_file: &Path) -> io::Result<Child> {
-    Command::new(basedir.join("Age2_x1/age2_x1.5.exe"))
+fn start_aoc(aoc_path: &Path, game_name: &str, spec_file: &Path) -> io::Result<Child> {
+    Command::new(aoc_path)
         .arg(format!("GAME={}", game_name))
         .arg(format!(r#""{}""#, spec_file.to_string_lossy()))
         .spawn()
 }
 
 #[cfg(not(target_os = "windows"))]
-fn start_aoc(basedir: &Path, game_name: &str, spec_file: &Path) -> io::Result<Child> {
-    fn to_wine(path: &Path) -> String {
-        let stdout = Command::new("winepath")
-            .args(&["-w", &path.to_string_lossy()])
-            .output()
-            .expect("winepath failed")
-            .stdout;
-        std::str::from_utf8(&stdout)
-            .expect("winepath spewed garbage")
-            .trim()
-            .to_string()
-    }
+fn start_aoc(aoc_path: &Path, game_name: &str, spec_file: &Path) -> io::Result<Child> {
+    use winepath::WineConfig;
+    let convert = WineConfig::from_env().unwrap();
 
-    let aoc_path = basedir.join("Age2_x1/age2_x1.5.exe");
     Command::new("wine")
         .arg(aoc_path.to_string_lossy().to_string())
         .arg(format!("GAME={}", game_name))
-        .arg(format!(r#""{}""#, to_wine(spec_file)))
+        .arg(format!(r#""{}""#, convert.to_wine_path(spec_file).unwrap()))
         .spawn()
 }
 
@@ -75,7 +65,7 @@ async fn find_aoc(basedir: impl AsRef<Path>) -> io::Result<PathBuf> {
     }
     Err(io::Error::new(
         io::ErrorKind::NotFound,
-        "could not find aoc exe",
+        format!("could not find aoc exe in {:?}", basedir.as_ref()),
     ))
 }
 
