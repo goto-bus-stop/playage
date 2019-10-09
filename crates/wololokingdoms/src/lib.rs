@@ -52,93 +52,93 @@ impl ConvertOptionsBuilder {
         ConvertOptionsBuilder(unsafe { ffi::wksettings_create() })
     }
 
-    pub fn copy_maps(mut self, enabled: bool) -> Self {
+    pub fn copy_maps(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_copy_maps(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
-    pub fn copy_custom_maps(mut self, enabled: bool) -> Self {
+    pub fn copy_custom_maps(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_copy_custom_maps(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
-    pub fn restricted_civ_mods(mut self, enabled: bool) -> Self {
+    pub fn restricted_civ_mods(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_restricted_civ_mods(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
-    pub fn fix_flags(mut self, enabled: bool) -> Self {
+    pub fn fix_flags(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_fix_flags(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
-    pub fn replace_tooltips(mut self, enabled: bool) -> Self {
+    pub fn replace_tooltips(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_replace_tooltips(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
-    pub fn use_grid(mut self, enabled: bool) -> Self {
+    pub fn use_grid(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_use_grid(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
-    pub fn use_short_walls(mut self, enabled: bool) -> Self {
+    pub fn use_short_walls(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_use_short_walls(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
-    pub fn language(mut self, code: &str) -> Self {
+    pub fn language(self, code: &str) -> Self {
         let cstr = CString::new(code).expect("invalid language");
         unsafe { ffi::wksettings_language(self.0, cstr.as_ptr() as *const i8) };
         self
     }
 
-    pub fn patch(mut self, patch: i32) -> Self {
+    pub fn patch(self, patch: i32) -> Self {
         unsafe { ffi::wksettings_patch(self.0, patch) };
         self
     }
 
-    pub fn hotkeys(mut self, choice: i32) -> Self {
+    pub fn hotkeys(self, choice: i32) -> Self {
         unsafe { ffi::wksettings_hotkeys(self.0, choice) };
         self
     }
 
-    pub fn dlc_level(mut self, level: i32) -> Self {
+    pub fn dlc_level(self, level: i32) -> Self {
         unsafe { ffi::wksettings_dlc_level(self.0, level) };
         self
     }
 
-    pub fn resource_path(mut self, path: &Path) -> Self {
+    pub fn resource_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_resource_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
-    pub fn hd_path(mut self, path: &Path) -> Self {
+    pub fn hd_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_hd_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
-    pub fn output_path(mut self, path: &Path) -> Self {
+    pub fn output_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_output_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
-    pub fn voobly_path(mut self, path: &Path) -> Self {
+    pub fn voobly_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_voobly_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
-    pub fn up_path(mut self, path: &Path) -> Self {
+    pub fn up_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_up_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
-    pub fn mod_name(mut self, name: &str) -> Self {
+    pub fn mod_name(self, name: &str) -> Self {
         let cstr = CString::new(name).expect("invalid mod name");
         unsafe { ffi::wksettings_mod_name(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
@@ -238,7 +238,10 @@ impl ConvertContext {
 pub struct Converter {
     ptr: ffi::wkconverter_t,
     context: Pin<Box<ConvertContext>>,
-    /// Keep a this around while the converter lives, so it isn't dropped too early.
+    /// Keep this around while the converter lives, so it isn't dropped too early.
+    ///
+    /// It does not need to be pinned because it is itself a pointer. The pointed-to data does not
+    /// move even if the ConvertOptions object moves.
     _settings: ConvertOptions,
 }
 
