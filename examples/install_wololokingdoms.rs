@@ -17,7 +17,7 @@ struct ProgressListener {
 }
 
 impl ConvertListener for ProgressListener {
-    fn log(&mut self, text: &str) {
+    fn log(&mut self, _text: &str) {
         // println!("log from rust callback: {}", text);
     }
 

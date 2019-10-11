@@ -43,7 +43,7 @@ where
     type Error = EnumSessionsError;
     type Future = FutureResult<Self::Output, Self::Error>;
 
-    fn upgrade_inbound(self, i: upgrade::Negotiated<C>, _: Self::Info) -> Self::Future {
+    fn upgrade_inbound(self, _i: upgrade::Negotiated<C>, _: Self::Info) -> Self::Future {
         future::ok(())
     }
 }
@@ -56,7 +56,7 @@ where
     type Error = EnumSessionsError;
     type Future = FutureResult<Self::Output, Self::Error>;
 
-    fn upgrade_outbound(self, i: upgrade::Negotiated<C>, _: Self::Info) -> Self::Future {
+    fn upgrade_outbound(self, _i: upgrade::Negotiated<C>, _: Self::Info) -> Self::Future {
         future::ok(())
     }
 }
