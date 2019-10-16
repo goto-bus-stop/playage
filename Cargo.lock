@@ -69,7 +69,7 @@ dependencies = [
 name = "aoc-spectate"
 version = "0.1.0"
 dependencies = [
- "async-std 0.99.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "async-std 0.99.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-preview 0.3.0-alpha.19 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -127,7 +127,7 @@ dependencies = [
 
 [[package]]
 name = "async-std"
-version = "0.99.9"
+version = "0.99.10"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "async-macros 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -137,7 +137,7 @@ dependencies = [
  "crossbeam-deque 0.7.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-core-preview 0.3.0-alpha.19 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures-io-preview 0.3.0-alpha.19 (registry+https://github.com/rust-lang/crates.io-index)",
- "futures-timer 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "futures-timer 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
  "kv-log-macro 1.0.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "lazy_static 1.4.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "log 0.4.8 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -742,7 +742,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 
 [[package]]
 name = "futures-timer"
-version = "0.4.0"
+version = "1.0.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "futures-core-preview 0.3.0-alpha.19 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1673,7 +1673,7 @@ version = "0.1.0"
 dependencies = [
  "aoc-spectate 0.1.0",
  "aoc-userpatch 0.1.0",
- "async-std 0.99.9 (registry+https://github.com/rust-lang/crates.io-index)",
+ "async-std 0.99.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "dprun 0.1.0",
  "dpsp-libp2p 0.1.0",
  "dpsp-local-only 0.1.0",
@@ -2889,7 +2889,7 @@ dependencies = [
 "checksum asn1_der 0.6.2 (registry+https://github.com/rust-lang/crates.io-index)" = "bea40e881533b1fe23afca9cd1c1ca022219a10fce604099ecfc96bfa26eaf1a"
 "checksum asn1_der_derive 0.1.1 (registry+https://github.com/rust-lang/crates.io-index)" = "9e7f92edafad155aff997fa5b727c6429b91e996b5a5d62a2b0adbae1306b5fe"
 "checksum async-macros 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e421d59b24c1feea2496e409b3e0a8de23e5fc130a2ddc0b012e551f3b272bba"
-"checksum async-std 0.99.9 (registry+https://github.com/rust-lang/crates.io-index)" = "e274b0689dffa49d9c128a7bd1a86707b6bc8ea319af0899caae654e221656f4"
+"checksum async-std 0.99.10 (registry+https://github.com/rust-lang/crates.io-index)" = "78e8ea9961931e674433891032bb92e7d5f43ab59f9c0ff77da140eb76de39de"
 "checksum async-task 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "de6bd58f7b9cc49032559422595c81cbfcf04db2f2133592f70af19e258a1ced"
 "checksum atty 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)" = "1803c647a3ec87095e7ae7acfca019e98de5ec9a7d01343f611cf3152ed71a90"
 "checksum autocfg 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)" = "b671c8fb71b457dd4ae18c4ba1e59aa81793daacc361d82fcd410cef0d491875"
@@ -2958,7 +2958,7 @@ dependencies = [
 "checksum futures-preview 0.3.0-alpha.19 (registry+https://github.com/rust-lang/crates.io-index)" = "3b1dce2a0267ada5c6ff75a8ba864b4e679a9e2aa44262af7a3b5516d530d76e"
 "checksum futures-select-macro-preview 0.3.0-alpha.19 (registry+https://github.com/rust-lang/crates.io-index)" = "df2ae43560eb10b5e50604c53bead6c9c75eade7081390cd3cce66e1582958f7"
 "checksum futures-sink-preview 0.3.0-alpha.19 (registry+https://github.com/rust-lang/crates.io-index)" = "86f148ef6b69f75bb610d4f9a2336d4fc88c4b5b67129d1a340dd0fd362efeec"
-"checksum futures-timer 0.4.0 (registry+https://github.com/rust-lang/crates.io-index)" = "878f1d2fc31355fa02ed2372e741b0c17e58373341e6a122569b4623a14a7d33"
+"checksum futures-timer 1.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "2879f3aa8fd2f60d17ede13349e11d0c132d0daa1b44e061f133f8928ddfaeea"
 "checksum futures-util-preview 0.3.0-alpha.19 (registry+https://github.com/rust-lang/crates.io-index)" = "5ce968633c17e5f97936bd2797b6e38fb56cf16a7422319f7ec2e30d3c470e8d"
 "checksum gcc 0.3.55 (registry+https://github.com/rust-lang/crates.io-index)" = "8f5f3913fa0bfe7ee1fd8248b6b9f42a5af4b9d65ec2dd2c3c26132b950ecfc2"
 "checksum generic-array 0.12.3 (registry+https://github.com/rust-lang/crates.io-index)" = "c68f0274ae0e023facc3c97b2e00f076be70e254bc851d972503b328db79b2ec"
