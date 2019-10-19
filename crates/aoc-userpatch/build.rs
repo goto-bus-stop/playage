@@ -160,7 +160,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
         }
     };
 
-    let mut opcodes = lde::X86.iter(exe, CODE_BASE_ADDRESS);
+    let opcodes = lde::X86.iter(exe, CODE_BASE_ADDRESS);
     for (op, va) in opcodes {
         match op.read::<u8>(0) {
             ASM_CALL => {

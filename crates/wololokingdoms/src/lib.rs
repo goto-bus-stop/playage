@@ -13,6 +13,7 @@ use std::{
 mod ffi {
     #![allow(non_camel_case_types)]
     #![allow(non_upper_case_globals)]
+    #![allow(unused)]
 
     include!(concat!(env!("OUT_DIR"), "/bindings.rs"));
 }
@@ -77,11 +78,13 @@ impl ConvertOptionsBuilder {
         self
     }
 
+    /// Install grid terrain textures.
     pub fn use_grid(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_use_grid(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
+    /// Install the short walls mod.
     pub fn use_short_walls(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_use_short_walls(self.0, if enabled { 1 } else { 0 }) };
         self
@@ -126,12 +129,14 @@ impl ConvertOptionsBuilder {
         self
     }
 
+    /// Set the Voobly installation path.
     pub fn voobly_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_voobly_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
+    /// Set the AoC/UserPatch installation path.
     pub fn up_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_up_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
