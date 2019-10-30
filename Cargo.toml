@@ -17,7 +17,7 @@ wololokingdoms = { path = "crates/wololokingdoms" }
 [dev-dependencies]
 progress = "^0.2.0"
 structopt = "^0.3.3"
-async-std = "= 0.99.10"
+async-std = "= 0.99.11"
 futures-preview = { version = "= 0.3.0-alpha.19", features = [ "async-await" ] }
 winepath = "^0.1.0"
 
