@@ -429,9 +429,15 @@ mod tests {
 
         let dp_run = run(options);
         if cfg!(target_os = "windows") {
-            assert_eq!(dp_run.command(), r#""dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11CF-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11D0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11D1-8A96-006097B01411}=i:2197""#);
+            assert_eq!(
+                dp_run.command(),
+                r#""dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11CF-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11D0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11D1-8A96-006097B01411}=i:2197""#
+            );
         } else {
-            assert_eq!(dp_run.command(), r#""wine" "dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11CF-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11D0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11D1-8A96-006097B01411}=i:2197""#);
+            assert_eq!(
+                dp_run.command(),
+                r#""wine" "dprun.exe" "--host" "--player" "Test" "--service-provider" "{36E95EE0-8577-11CF-960C-0080C7534E82}" "--application" "{5BFDB060-06A4-11D0-9C4F-00A0C905425E}" "--address" "INet=127.0.0.1" "--address" "{E4524541-8EA5-11D1-8A96-006097B01411}=i:2197""#
+            );
         }
     }
 }

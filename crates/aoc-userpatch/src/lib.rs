@@ -1,11 +1,11 @@
 mod patch;
 
+pub use patch::install_into;
 use std::{
-    fmt::{self, Display, Formatter},
     error::Error,
+    fmt::{self, Display, Formatter},
     str::FromStr,
 };
-pub use patch::install_into;
 
 /// Interface style.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
