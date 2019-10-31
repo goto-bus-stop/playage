@@ -18,4 +18,3 @@ env:
 script:
   - 'cargo build --all --verbose'
   - 'cargo test --all --verbose'
-cache: cargo
