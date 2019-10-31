@@ -11,6 +11,9 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v1
 
+      - name: Install upx
+        run: sudo apt-get install upx
+
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
         with:
@@ -31,6 +34,9 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v1
+
+      - name: Install upx
+        run: sudo apt-get install upx
 
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
@@ -71,6 +77,9 @@ jobs:
     steps:
       - name: Checkout sources
         uses: actions/checkout@v1
+
+      - name: Install upx
+        run: sudo apt-get install upx
 
       - name: Install nightly toolchain
         uses: actions-rs/toolchain@v1
