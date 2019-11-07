@@ -307,8 +307,7 @@ impl Converter {
         }
     }
 
-    /// Run the conversion!
-    pub fn run(&mut self) -> Result<(), String> {
+    fn install_callbacks(&mut self) {
         unsafe {
             ffi::wkconverter_on_log(self.ptr, Some(on_log));
             ffi::wkconverter_on_set_info(self.ptr, Some(on_set_info));
@@ -316,6 +315,11 @@ impl Converter {
             ffi::wkconverter_on_error(self.ptr, Some(on_error));
             ffi::wkconverter_on_finished(self.ptr, Some(on_finished));
         };
+    }
+
+    /// Run the conversion!
+    pub fn run(mut self) -> Result<(), String> {
+        self.install_callbacks();
 
         let res = unsafe { ffi::wkconverter_run(self.ptr) };
 
