@@ -4,9 +4,7 @@ use std::os::unix::ffi::OsStrExt;
 use std::os::windows::ffi::OsStrExt;
 use std::{
     ffi::{CStr, CString},
-    marker::PhantomPinned,
     path::Path,
-    pin::Pin,
     ptr,
 };
 
@@ -45,7 +43,9 @@ impl IndexType {
     }
 }
 
+/// Builder struct to create options for the WololoKingdoms converter.
 pub struct ConvertOptionsBuilder(ffi::wksettings_t);
+/// Struct holding a reference to completed convert options.
 pub struct ConvertOptions(ffi::wksettings_t);
 
 impl ConvertOptionsBuilder {
@@ -169,6 +169,7 @@ impl Drop for ConvertOptionsBuilder {
 }
 
 impl ConvertOptions {
+    /// Create an options builder.
     pub fn builder() -> ConvertOptionsBuilder {
         ConvertOptionsBuilder::new()
     }
@@ -192,6 +193,8 @@ pub trait ConvertListener {
     fn finished(&mut self) {}
 }
 
+/// Wrap up a ConvertListener implementation to convert the WK converter callbacks into something
+/// more rusty.
 pub struct Listener {
     inner: Box<dyn ConvertListener>,
 }
@@ -218,21 +221,24 @@ impl Listener {
     }
 }
 
+/// Context argument for libwololokingdoms callbacks.
+///
+/// Since we will be giving the WK converter library a C pointer to this structure, it cannot be moved.
 struct ConvertContext {
     last_error: Option<String>,
     listener: Listener,
-    _pin: PhantomPinned,
 }
 
 impl ConvertContext {
-    pub fn new(listener: Listener) -> Pin<Box<Self>> {
-        Box::pin(ConvertContext {
+    /// Create a context argument with some callbacks.
+    fn new(listener: Listener) -> Box<Self> {
+        Box::new(ConvertContext {
             last_error: Default::default(),
             listener,
-            _pin: PhantomPinned,
         })
     }
 
+    /// Reify a context instance from the context argument inside a WK converter callback.
     unsafe fn from_ptr<'a>(ptr: *mut std::os::raw::c_void) -> &'a mut Self {
         (ptr as *mut ConvertContext)
             .as_mut()
@@ -241,15 +247,15 @@ impl ConvertContext {
 }
 
 pub struct Converter {
+    /// The underlying C++ WK converter.
     ptr: ffi::wkconverter_t,
-    context: Pin<Box<ConvertContext>>,
+    /// Context argument for the WK converter callbacks.
+    context: Box<ConvertContext>,
     /// Keep this around while the converter lives, so it isn't dropped too early.
-    ///
-    /// It does not need to be pinned because it is itself a pointer. The pointed-to data does not
-    /// move even if the ConvertOptions object moves.
     _settings: ConvertOptions,
 }
 
+/// WK converter `log` callback.
 extern "C" fn on_log(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
     let ctx = unsafe { ConvertContext::from_ptr(ctx) };
     let cstr = unsafe { CStr::from_ptr(msg) };
@@ -257,6 +263,7 @@ extern "C" fn on_log(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c
     ctx.listener.log(s);
 }
 
+/// WK converter `setInfo` callback.
 extern "C" fn on_set_info(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
     let ctx = unsafe { ConvertContext::from_ptr(ctx) };
     let cstr = unsafe { CStr::from_ptr(msg) };
@@ -264,11 +271,13 @@ extern "C" fn on_set_info(ctx: *mut std::os::raw::c_void, msg: *const std::os::r
     ctx.listener.set_info(s);
 }
 
+/// WK converter `progress` callback.
 extern "C" fn on_progress(ctx: *mut std::os::raw::c_void, percent: i32) {
     let ctx = unsafe { ConvertContext::from_ptr(ctx) };
     ctx.listener.progress(percent);
 }
 
+/// WK converter `error` callback.
 extern "C" fn on_error(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw::c_char) {
     let ctx = unsafe { ConvertContext::from_ptr(ctx) };
     let cstr = unsafe { CStr::from_ptr(msg) };
@@ -276,21 +285,21 @@ extern "C" fn on_error(ctx: *mut std::os::raw::c_void, msg: *const std::os::raw:
     ctx.last_error = Some(s.to_string());
 }
 
+/// WK converter `finished` callback.
 extern "C" fn on_finished(ctx: *mut std::os::raw::c_void) {
     let ctx = unsafe { ConvertContext::from_ptr(ctx) };
     ctx.listener.finish();
 }
 
 impl Converter {
+    /// Create a converter with the given options and callbacks.
     pub fn new(settings: ConvertOptions, listener: Box<dyn ConvertListener>) -> Self {
         let listener = Listener::new(listener);
         let mut context = ConvertContext::new(listener);
 
         Self {
             ptr: unsafe {
-                let mut_ref = Pin::as_mut(&mut context);
-                let context_ptr = Pin::get_unchecked_mut(mut_ref) as *mut ConvertContext
-                    as *mut std::os::raw::c_void;
+                let context_ptr = context.as_mut() as *mut ConvertContext as *mut std::os::raw::c_void;
                 ffi::wkconverter_create(settings.0, context_ptr)
             },
             context,
@@ -298,6 +307,7 @@ impl Converter {
         }
     }
 
+    /// Run the conversion!
     pub fn run(&mut self) -> Result<(), String> {
         unsafe {
             ffi::wkconverter_on_log(self.ptr, Some(on_log));
@@ -308,11 +318,9 @@ impl Converter {
         };
 
         let res = unsafe { ffi::wkconverter_run(self.ptr) };
-        let context = Pin::as_mut(&mut self.context);
-        let context = unsafe { Pin::get_unchecked_mut(context) };
 
         if res != 0 {
-            let err = context.last_error.take().unwrap_or("unk".to_string());
+            let err = self.context.last_error.take().unwrap_or("unk".to_string());
             Err(err)
         } else {
             Ok(())
