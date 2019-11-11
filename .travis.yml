@@ -1,7 +1,8 @@
 language: rust
 dist: xenial
 rust:
-  - nightly
+  - stable
+  - beta
 
 addons:
   apt:
