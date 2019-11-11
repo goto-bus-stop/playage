@@ -56,7 +56,7 @@ dependencies = [
 name = "aoc-spectate"
 version = "0.1.0"
 dependencies = [
- "async-std 0.99.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "async-std 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "futures 0.3.1 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -119,7 +119,7 @@ dependencies = [
 
 [[package]]
 name = "async-std"
-version = "0.99.12"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
  "async-macros 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
@@ -1611,7 +1611,7 @@ version = "0.1.0"
 dependencies = [
  "aoc-spectate 0.1.0",
  "aoc-userpatch 0.1.0",
- "async-std 0.99.12 (registry+https://github.com/rust-lang/crates.io-index)",
+ "async-std 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "dprun 0.1.0",
  "dpsp-libp2p 0.1.0",
  "dpsp-local-only 0.1.0",
@@ -2816,7 +2816,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 "checksum asn1_der 0.6.3 (registry+https://github.com/rust-lang/crates.io-index)" = "6fce6b6a0ffdafebd82c87e79e3f40e8d2c523e5fea5566ff6b90509bf98d638"
 "checksum asn1_der_derive 0.1.2 (registry+https://github.com/rust-lang/crates.io-index)" = "0d0864d84b8e07b145449be9a8537db86bf9de5ce03b913214694643b4743502"
 "checksum async-macros 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "e421d59b24c1feea2496e409b3e0a8de23e5fc130a2ddc0b012e551f3b272bba"
-"checksum async-std 0.99.12 (registry+https://github.com/rust-lang/crates.io-index)" = "44501a9f7961bb539b67be0c428b3694e26557046a52759ca7eaf790030a64cc"
+"checksum async-std 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "80fd70c8b0cbd985275dc70448d5b6b76338ead5350d1774d81585ab8f826673"
 "checksum async-task 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "de6bd58f7b9cc49032559422595c81cbfcf04db2f2133592f70af19e258a1ced"
 "checksum atty 0.2.13 (registry+https://github.com/rust-lang/crates.io-index)" = "1803c647a3ec87095e7ae7acfca019e98de5ec9a7d01343f611cf3152ed71a90"
 "checksum autocfg 0.1.7 (registry+https://github.com/rust-lang/crates.io-index)" = "1d49d90015b3c36167a20fe2810c5cd875ad504b39cff3d4eae7977e6b7c1cb2"
