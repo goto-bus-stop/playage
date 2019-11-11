@@ -46,6 +46,6 @@ fn main() {
         .build();
 
     let listener = Box::new(ProgressListener { bar: Bar::new() });
-    let mut converter = Converter::new(settings, listener);
+    let converter = Converter::new(settings, listener);
     converter.run().unwrap();
 }
