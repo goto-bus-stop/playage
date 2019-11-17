@@ -19,7 +19,7 @@ progress = "^0.2.0"
 structopt = "^0.3.4"
 async-std = "1.0"
 futures = "0.3.1"
-winepath = "^0.1.0"
+winepath = "^0.1.1"
 
 [workspace]
 members = [
