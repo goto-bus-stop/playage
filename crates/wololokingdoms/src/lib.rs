@@ -43,6 +43,24 @@ impl IndexType {
     }
 }
 
+#[derive(Debug, Clone, Copy)]
+pub enum HotkeyStyle {
+    /// Use AoC hotkeys in WololoKingdoms.
+    AoC = 1,
+    /// Use HD Edition hotkeys in WololoKingdoms.
+    HD = 2,
+    /// Use HD Edition hotkeys in WololoKingdoms *and* the base game.
+    HDForBoth = 3,
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum DLCLevel {
+    Conquerors = 0,
+    Forgotten = 1,
+    AfricanKingdoms = 2,
+    RiseOfTheRajas = 3,
+}
+
 /// Builder struct to create options for the WololoKingdoms converter.
 pub struct ConvertOptionsBuilder(ffi::wksettings_t);
 /// Struct holding a reference to completed convert options.
@@ -101,13 +119,13 @@ impl ConvertOptionsBuilder {
         self
     }
 
-    pub fn hotkeys(self, choice: i32) -> Self {
-        unsafe { ffi::wksettings_hotkeys(self.0, choice) };
+    pub fn hotkeys(self, choice: HotkeyStyle) -> Self {
+        unsafe { ffi::wksettings_hotkeys(self.0, choice as i32) };
         self
     }
 
-    pub fn dlc_level(self, level: i32) -> Self {
-        unsafe { ffi::wksettings_dlc_level(self.0, level) };
+    pub fn dlc_level(self, level: DLCLevel) -> Self {
+        unsafe { ffi::wksettings_dlc_level(self.0, level as i32) };
         self
     }
 
