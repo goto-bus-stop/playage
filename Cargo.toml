@@ -10,7 +10,7 @@ aoc-spectate = { path = "crates/aoc-spectate" }
 dprun = { path = "crates/dprun" }
 dpsp-local-only = { path = "crates/dpsp-local-only" }
 dpsp-libp2p = { path = "crates/dpsp-libp2p" }
-tokio = "^0.1.20"
+tokio = "^0.2.9"
 uuid = { version = "^0.8.0", features = ["v4"] }
 wololokingdoms = { path = "crates/wololokingdoms" }
 
