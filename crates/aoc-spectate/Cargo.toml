@@ -5,5 +5,5 @@ authors = ["Renée Kooi <renee@kooi.me>"]
 edition = "2018"
 
 [dependencies]
-async-std = "1.3"
+async-std = "1.4"
 futures = "0.3.1"
