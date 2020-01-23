@@ -53,11 +53,18 @@ pub enum HotkeyStyle {
     HDForBoth = 3,
 }
 
+/// The DLCs that should be converted.
+///
+/// These stack linearly, you cannot convert African Kingdoms if you do not own The Forgotten.
 #[derive(Debug, Clone, Copy)]
 pub enum DLCLevel {
+    /// Only convert the base game.
     Conquerors = 0,
+    /// Convert the base game and the Forgotten expansion.
     Forgotten = 1,
+    /// Convert the base game and the Forgotten and African Kingdoms expansions.
     AfricanKingdoms = 2,
+    /// Convert the base game and the Forgotten, African Kingdoms, and Rise of the Rajas expansions.
     RiseOfTheRajas = 3,
 }
 
@@ -71,11 +78,13 @@ impl ConvertOptionsBuilder {
         ConvertOptionsBuilder(unsafe { ffi::wksettings_create() })
     }
 
+    /// Should the HD Edition builtin map scripts be converted?
     pub fn copy_maps(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_copy_maps(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
+    /// Should any user-installed map scripts from the Steam Workshop be converted?
     pub fn copy_custom_maps(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_copy_custom_maps(self.0, if enabled { 1 } else { 0 }) };
         self
@@ -86,11 +95,13 @@ impl ConvertOptionsBuilder {
         self
     }
 
+    /// Should the flag locations on buildings be converted?
     pub fn fix_flags(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_fix_flags(self.0, if enabled { 1 } else { 0 }) };
         self
     }
 
+    /// Should the tooltip descriptions be extended?
     pub fn replace_tooltips(self, enabled: bool) -> Self {
         unsafe { ffi::wksettings_replace_tooltips(self.0, if enabled { 1 } else { 0 }) };
         self
@@ -108,39 +119,46 @@ impl ConvertOptionsBuilder {
         self
     }
 
+    /// Set the language to use.
     pub fn language(self, code: &str) -> Self {
         let cstr = CString::new(code).expect("invalid language");
         unsafe { ffi::wksettings_language(self.0, cstr.as_ptr() as *const i8) };
         self
     }
 
+    /// Set the patch ID to use.
     pub fn patch(self, patch: i32) -> Self {
         unsafe { ffi::wksettings_patch(self.0, patch) };
         self
     }
 
+    /// Set the hotkey style to use.
     pub fn hotkeys(self, choice: HotkeyStyle) -> Self {
         unsafe { ffi::wksettings_hotkeys(self.0, choice as i32) };
         self
     }
 
+    /// Set the DLCs to convert.
     pub fn dlc_level(self, level: DLCLevel) -> Self {
         unsafe { ffi::wksettings_dlc_level(self.0, level as i32) };
         self
     }
 
+    /// Set the path where the WololoKingdoms converter can find the resource files it needs for conversion.
     pub fn resource_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_resource_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
+    /// Set the path where the HD Edition is installed.
     pub fn hd_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_hd_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
+    /// Set the path where the Conquerors is installed.
     pub fn output_path(self, path: &Path) -> Self {
         let cstr = path_to_cpath(path);
         unsafe { ffi::wksettings_output_path(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
@@ -161,12 +179,14 @@ impl ConvertOptionsBuilder {
         self
     }
 
+    /// Set the name of the mod (default "WK").
     pub fn mod_name(self, name: &str) -> Self {
         let cstr = CString::new(name).expect("invalid mod name");
         unsafe { ffi::wksettings_mod_name(self.0, cstr.as_ptr() as *const ffi::path_char_t) };
         self
     }
 
+    /// Consume the builder into a ConvertOptions struct.
     pub fn build(mut self) -> ConvertOptions {
         assert!(!self.0.is_null());
         let inst = ConvertOptions(self.0);
@@ -204,6 +224,7 @@ impl Drop for ConvertOptions {
     }
 }
 
+/// Callbacks for the installation process.
 pub trait ConvertListener {
     fn log(&mut self, _text: &str) {}
     fn set_info(&mut self, _text: &str) {}
