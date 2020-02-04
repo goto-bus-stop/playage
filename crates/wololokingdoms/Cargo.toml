@@ -9,5 +9,5 @@ build = "build.rs"
 # aoc_userpatch = { path = "../aoc_userpatch" }
 
 [build-dependencies]
-bindgen = "^0.53.0"
+bindgen = "^0.53.1"
 cmake = "^0.1.42"
