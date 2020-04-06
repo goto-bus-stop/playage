@@ -8,4 +8,4 @@ edition = "2018"
 dprun = { path = "../dprun" }
 libp2p = "^0.13.1"
 futures = "^0.1.29"
-tokio = "^0.1.0"
+tokio = "^0.2.16"
