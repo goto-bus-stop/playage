@@ -597,7 +597,7 @@ dependencies = [
  "bytes 0.4.12",
  "futures 0.1.29",
  "lazy_static",
- "tokio",
+ "tokio 0.2.21",
  "tokio-process",
  "uuid",
 ]
@@ -618,7 +618,7 @@ dependencies = [
  "dprun",
  "futures 0.1.29",
  "libp2p",
- "tokio",
+ "tokio 0.2.21",
 ]
 
 [[package]]
@@ -626,7 +626,7 @@ name = "dpsp-local-only"
 version = "0.1.0"
 dependencies = [
  "dprun",
- "tokio",
+ "tokio 0.2.21",
 ]
 
 [[package]]
@@ -2635,6 +2635,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "tokio"
+version = "0.2.21"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d099fa27b9702bed751524694adbe393e18b36b204da91eb1cbbbbb4a5ee2d58"
+dependencies = [
+ "bytes 0.5.4",
+ "pin-project-lite",
+]
+
+[[package]]
 name = "tokio-codec"
 version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2664,7 +2674,7 @@ dependencies = [
  "futures 0.1.29",
  "futures-cpupool",
  "lazy_static",
- "tokio",
+ "tokio 0.1.22",
 ]
 
 [[package]]
