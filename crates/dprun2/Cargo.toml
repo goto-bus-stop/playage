@@ -7,4 +7,4 @@ edition = "2018"
 [dependencies]
 lazy_static = "1.4"
 uuid = { version = "0.8", default-features = false }
-async-std = { version = "1.5", default-features = false, features = ["unstable"] }
+async-std = { version = "1.6", default-features = false, features = ["unstable"] }
