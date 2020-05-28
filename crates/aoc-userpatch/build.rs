@@ -14,6 +14,9 @@
 //! byte array combo. They are serialized to Rust structures and grouped by feature. The output is a
 //! file `injections.rs` that defines a static `FEATURES` variable. We can `include!` that file in
 //! the crate's source code.
+
+#[allow(clippy::unreadable_literal)]
+
 use encoding_rs::UTF_16LE;
 use std::{
     env,
@@ -58,6 +61,7 @@ struct Feature {
     name: String,
     optional: bool,
     enabled_by_default: bool,
+    #[allow(unused)]
     always_enabled: bool,
     affects_sync: bool,
     patches: Vec<Patch>,
@@ -296,9 +300,9 @@ fn main() -> Result<()> {
     let mut patch_definitions: Vec<Vec<u8>> = Vec::new();
     let mut features_definition: Vec<u8> = Vec::new();
 
-    write!(
+    writeln!(
         &mut features_definition,
-        "static FEATURES: [Feature; {}] = [\n",
+        "static FEATURES: [Feature; {}] = [",
         features.len()
     )?;
 
@@ -326,7 +330,7 @@ fn main() -> Result<()> {
             write!(f, ", 0x90")?;
             padding = padding.saturating_sub(4);
         }
-        write!(f, "]),\n")?;
+        writeln!(f, "]),\n")?;
         Ok(())
     }
 
@@ -334,7 +338,7 @@ fn main() -> Result<()> {
         let mut patch_group = Vec::new();
         for inject in &feature.patches {
             match inject {
-                Patch::Header(name) => write!(&mut patch_group, "    // {}\n", name)?,
+                Patch::Header(name) => writeln!(&mut patch_group, "    // {}", name)?,
                 Patch::Hex(addr, patch) => {
                     write!(
                         &mut patch_group,
@@ -344,7 +348,7 @@ fn main() -> Result<()> {
                     for b in patch.iter().skip(1) {
                         write!(&mut patch_group, ", {:#04X}", b)?;
                     }
-                    write!(&mut patch_group, "]),\n")?;
+                    writeln!(&mut patch_group, "]),")?;
                 }
                 Patch::Call(addr, to_addr, padding) => {
                     serialize_jmp_or_call(&mut patch_group, ASM_CALL, *addr, *to_addr, *padding)?
@@ -355,9 +359,9 @@ fn main() -> Result<()> {
             }
         }
         patch_definitions.push(patch_group);
-        write!(
+        writeln!(
             &mut features_definition,
-            "    Feature {{ name: \"{}\", optional: {:?}, affects_sync: {:?}, patches: &PATCH_GROUP_{}, enabled: {:?} }},\n",
+            "    Feature {{ name: \"{}\", optional: {:?}, affects_sync: {:?}, patches: &PATCH_GROUP_{}, enabled: {:?} }},",
             feature.name,
             feature.optional,
             feature.affects_sync,
@@ -365,12 +369,12 @@ fn main() -> Result<()> {
             feature.enabled_by_default
         )?;
     }
-    write!(&mut features_definition, "];\n")?;
+    writeln!(&mut features_definition, "];")?;
 
     for (i, text) in patch_definitions.iter().enumerate() {
-        write!(
+        writeln!(
             f,
-            "static PATCH_GROUP_{}: [Injection; {}] = [\n",
+            "static PATCH_GROUP_{}: [Injection; {}] = [",
             i,
             features[i]
                 .patches
@@ -382,7 +386,7 @@ fn main() -> Result<()> {
                 })
         )?;
         f.write_all(&text)?;
-        write!(f, "];\n")?;
+        writeln!(f, "];")?;
     }
 
     f.write_all(&features_definition)?;
