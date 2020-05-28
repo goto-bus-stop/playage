@@ -11,8 +11,13 @@ fn main() {
         .build_target("wololokingdoms")
         .build();
 
+    println!(
+        "cargo:rustc-link-search=native={}/build/third_party/genieutils",
+        wk_path.display()
+    );
     println!("cargo:rustc-link-search=native={}/build", wk_path.display());
     println!("cargo:rustc-link-lib=static=wololokingdoms");
+    println!("cargo:rustc-link-lib=static=genieutils");
     println!("cargo:rustc-link-lib=dylib=stdc++");
     println!("cargo:rustc-link-lib=dylib=stdc++fs");
     println!("cargo:rustc-link-lib=dylib=z");
