@@ -1,8 +1,8 @@
 use aoc_spectate::SpectateStream;
 use async_std::{
-    prelude::*,
     fs::{self, File},
     net::TcpStream,
+    prelude::*,
     task,
 };
 use std::{
