@@ -225,7 +225,7 @@ fn find_injections(exe: &[u8]) -> Result<Vec<Feature>> {
                         );
                     }
                     // CreateString(address_of_utf16_string)
-                    STRING_CONSTRUCTOR_ADDRESS16 if stack_args.len() > 0 => {
+                    STRING_CONSTRUCTOR_ADDRESS16 if !stack_args.is_empty() => {
                         stack_args.reverse();
                         let addr = stack_args[0];
                         if addr > RDATA_BASE_ADDRESS {
