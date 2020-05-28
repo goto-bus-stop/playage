@@ -1,5 +1,5 @@
-use dprun2::{run, DPAddressValue, DPRunOptions, GUID};
 use async_std::prelude::*;
+use dprun2::{run, DPAddressValue, DPRunOptions, GUID};
 // use dpsp_libp2p::Libp2pSP;
 // use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
 use std::sync::{Arc, Mutex};

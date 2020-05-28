@@ -338,7 +338,8 @@ impl Converter {
 
         Self {
             ptr: unsafe {
-                let context_ptr = context.as_mut() as *mut ConvertContext as *mut std::os::raw::c_void;
+                let context_ptr =
+                    context.as_mut() as *mut ConvertContext as *mut std::os::raw::c_void;
                 ffi::wkconverter_create(settings.0, context_ptr)
             },
             context,
