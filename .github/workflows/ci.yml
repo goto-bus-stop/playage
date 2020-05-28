@@ -32,7 +32,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
+        # Enable windows when I feel like figuring out how to install upx
+        # os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest]
         toolchain: [stable, beta]
     runs-on: ${{matrix.os}}
     steps:
