@@ -14,10 +14,10 @@ jobs:
       - name: Install upx
         run: sudo apt-get install upx
 
-      - name: Install nightly toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
 
       - name: Run cargo check
@@ -30,6 +30,7 @@ jobs:
     strategy:
       matrix:
         os: [ubuntu-latest, windows-latest]
+        toolchain: [stable, beta]
     runs-on: ${{matrix.os}}
     steps:
       - name: Checkout sources
@@ -38,10 +39,10 @@ jobs:
       - name: Install upx
         run: sudo apt-get install upx
 
-      - name: Install nightly toolchain
+      - name: Install ${{matrix.toolchain}} toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: ${{matrix.toolchain}}
           override: true
 
       - name: Run cargo test
@@ -56,10 +57,10 @@ jobs:
       - name: Checkout sources
         uses: actions/checkout@v1
 
-      - name: Install nightly toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
 
       - name: Install rustfmt
@@ -81,10 +82,10 @@ jobs:
       - name: Install upx
         run: sudo apt-get install upx
 
-      - name: Install nightly toolchain
+      - name: Install stable toolchain
         uses: actions-rs/toolchain@v1
         with:
-          toolchain: nightly
+          toolchain: stable
           override: true
 
       - name: Install clippy
