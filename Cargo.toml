@@ -7,25 +7,25 @@ edition = "2018"
 [dependencies]
 aoc-userpatch = { path = "crates/aoc-userpatch" }
 aoc-spectate = { path = "crates/aoc-spectate" }
-dprun = { path = "crates/dprun" }
-dpsp-local-only = { path = "crates/dpsp-local-only" }
-dpsp-libp2p = { path = "crates/dpsp-libp2p" }
-tokio = "^0.1.20"
-uuid = { version = "^0.8.0", features = ["v4"] }
+async-std = { version = "1.6", features = ["attributes", "unstable"] }
+dprun2 = { path = "crates/dprun2" }
+# dpsp-local-only = { path = "crates/dpsp-local-only" }
+# dpsp-libp2p = { path = "crates/dpsp-libp2p" }
+uuid = { version = "0.8", features = ["v4"] }
 wololokingdoms = { path = "crates/wololokingdoms" }
 
 [dev-dependencies]
-progress = "^0.2.0"
-structopt = "^0.3.3"
-async-std = "= 0.99.11"
-futures-preview = { version = "= 0.3.0-alpha.19", features = [ "async-await" ] }
-winepath = "^0.1.0"
+progress = "0.2"
+structopt = "0.3"
+futures = "0.3"
+winepath = "0.1"
 
 [workspace]
 members = [
   "crates/aoc-userpatch",
   "crates/aoc-spectate",
   "crates/dprun",
+  "crates/dprun2",
   "crates/dpsp-libp2p",
   "crates/dpsp-local-only",
   "crates/wololokingdoms"

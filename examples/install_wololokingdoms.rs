@@ -1,7 +1,7 @@
 use progress::Bar;
 use std::path::PathBuf;
 use structopt::StructOpt;
-use wololokingdoms::{ConvertListener, ConvertOptions, Converter};
+use wololokingdoms::{ConvertListener, ConvertOptions, Converter, DLCLevel};
 
 /// WololoKingdoms Installer CLI.
 #[derive(StructOpt, Debug)]
@@ -42,10 +42,10 @@ fn main() {
         .voobly_path(&args.install_path)
         .up_path(&args.install_path)
         .resource_path(&PathBuf::from("./third_party/wololokingdoms/resources"))
-        .dlc_level(3)
+        .dlc_level(DLCLevel::RiseOfTheRajas)
         .build();
 
     let listener = Box::new(ProgressListener { bar: Bar::new() });
-    let mut converter = Converter::new(settings, listener);
+    let converter = Converter::new(settings, listener);
     converter.run().unwrap();
 }
