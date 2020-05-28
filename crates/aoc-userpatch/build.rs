@@ -18,13 +18,11 @@
 #![allow(clippy::unreadable_literal)]
 
 use encoding_rs::UTF_16LE;
-use std::{
-    env,
-    fs::{self, File},
-    io::{Result, Write},
-    path::{Path, PathBuf},
-    process::Command,
-};
+use std::env;
+use std::fs::{self, File};
+use std::io::{Result, Write};
+use std::path::{Path, PathBuf};
+use std::process::Command;
 
 /// The location of the FeatureData constructor.
 const FEATURE_ADDRESS: u32 = 0x00402130;
