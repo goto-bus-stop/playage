@@ -15,7 +15,7 @@
 //! file `injections.rs` that defines a static `FEATURES` variable. We can `include!` that file in
 //! the crate's source code.
 
-#[allow(clippy::unreadable_literal)]
+#![allow(clippy::unreadable_literal)]
 
 use encoding_rs::UTF_16LE;
 use std::{
