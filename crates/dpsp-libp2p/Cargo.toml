@@ -6,6 +6,6 @@ edition = "2018"
 
 [dependencies]
 dprun = { path = "../dprun" }
-libp2p = "^0.13.1"
+libp2p = "^0.22.0"
 futures = "^0.1.29"
 tokio = "^0.1.0"
