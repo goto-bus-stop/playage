@@ -5,13 +5,12 @@
 //!
 //! The DPRun executable must be available separately.
 
-use async_std::task::spawn_blocking;
+use async_process::Command;
 use std::io;
 use std::path::PathBuf;
-use std::process::Command;
 pub use uuid::Uuid as GUID;
 
-// TODO move these to consts again when uuid has const fns
+// TODO move these to consts again when parse_str is const fn
 lazy_static::lazy_static! {
     /// The GUID of the DPRun Service Provider.
     static ref GUID_DPRUNSP: GUID = GUID::parse_str("B1ED2367-609B-4C5C-8755-D2A29BB9A554").unwrap();
@@ -259,8 +258,15 @@ impl DPRun {
 
     /// Start a game without the host server for the DPRun Service Provider.
     async fn start_without_server(mut self) -> Result<(), io::Error> {
-        spawn_blocking(move || self.command.spawn()).await?;
-        Ok(())
+        let status = self.command.status().await?;
+        if status.success() {
+            Ok(())
+        } else {
+            Err(io::Error::new(
+                io::ErrorKind::Other,
+                format!("dprun exited with status {}", status.code().unwrap_or(0)),
+            ))
+        }
     }
 
     /// Start a game that uses the host server for the DPRun Service Provider.
