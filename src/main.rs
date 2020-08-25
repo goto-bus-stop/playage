@@ -1,5 +1,5 @@
 use async_std::prelude::*;
-use dprun2::{run, DPAddressValue, DPRunOptions, GUID};
+use dprun2::{run, DPRunOptions, GUID};
 // use dpsp_libp2p::Libp2pSP;
 // use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
 use std::time::Duration;
@@ -15,11 +15,11 @@ enum SPType {
 
 /// Test app that sets up a DPChat session.
 #[async_std::main]
-async fn main() {
-    let dpchat = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E").unwrap();
-    let test_session_id = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E").unwrap();
+async fn main() -> anyhow::Result<()> {
+    let dpchat = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E")?;
+    let test_session_id = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E")?;
 
-    let dprun_dir = std::env::current_dir().unwrap().join("../dprun/bin/debug");
+    let dprun_dir = std::env::current_dir()?.join("../dprun/bin/debug");
 
     let use_sp = SPType::TCPIP;
 
@@ -95,8 +95,10 @@ async fn main() {
     let join_instance = join.start().delay(Duration::from_secs(3));
 
     let (host_result, join_result) = host_instance.join(join_instance).await;
-    host_result.unwrap();
-    join_result.unwrap();
+    let _ = host_result?;
+    let _ = join_result?;
 
     println!("done");
+
+    Ok(())
 }
