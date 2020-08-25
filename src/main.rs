@@ -2,13 +2,14 @@ use async_std::prelude::*;
 use dprun2::{run, DPAddressValue, DPRunOptions, GUID};
 // use dpsp_libp2p::Libp2pSP;
 // use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
-use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 #[derive(PartialEq, Eq)]
 enum SPType {
     TCPIP,
+    #[allow(dead_code)]
     Local,
+    #[allow(dead_code)]
     P2P,
 }
 
@@ -45,20 +46,14 @@ async fn main() {
 
             host_options = host_options
                 .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
-                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
-                .named_address_part("INetPort", DPAddressValue::Number(2197))
-                .named_address_part(
-                    "SelfID",
-                    DPAddressValue::Binary(host_guid.as_bytes().to_vec()),
-                );
+                .named_address_part("INet", "127.0.0.1")
+                .named_address_part("INetPort", 2197)
+                .named_address_part("SelfID", host_guid.as_bytes());
             join_options = join_options
                 .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
-                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
-                .named_address_part("INetPort", DPAddressValue::Number(2198))
-                .named_address_part(
-                    "SelfID",
-                    DPAddressValue::Binary(join_guid.as_bytes().to_vec()),
-                );
+                .named_address_part("INet", "127.0.0.1")
+                .named_address_part("INetPort", 2198)
+                .named_address_part("SelfID", join_guid.as_bytes());
             */
         }
         SPType::P2P => {
@@ -66,29 +61,23 @@ async fn main() {
             /*
             host_options = host_options
                 .service_provider_handler(Box::new(Libp2pSP::default()))
-                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
-                .named_address_part("INetPort", DPAddressValue::Number(2197))
-                .named_address_part(
-                    "SelfID",
-                    DPAddressValue::Binary(host_guid.as_bytes().to_vec()),
-                );
+                .named_address_part("INet", "127.0.0.1")
+                .named_address_part("INetPort", 2197)
+                .named_address_part("SelfID", host_guid.as_bytes());
             join_options = join_options
                 .service_provider_handler(Box::new(Libp2pSP::default()))
-                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()))
-                .named_address_part("INetPort", DPAddressValue::Number(2198))
-                .named_address_part(
-                    "SelfID",
-                    DPAddressValue::Binary(join_guid.as_bytes().to_vec()),
-                );
+                .named_address_part("INet", "127.0.0.1")
+                .named_address_part("INetPort", 2198)
+                .named_address_part("SelfID", join_guid.as_bytes());
             */
         }
         SPType::TCPIP => {
             host_options = host_options
                 .named_service_provider("TCPIP")
-                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()));
+                .named_address_part("INet", "127.0.0.1");
             join_options = join_options
                 .named_service_provider("TCPIP")
-                .named_address_part("INet", DPAddressValue::String("127.0.0.1".to_string()));
+                .named_address_part("INet", "127.0.0.1");
         }
     }
 

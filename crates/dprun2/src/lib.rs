@@ -40,11 +40,40 @@ enum DPGUIDOrNamed {
 
 impl DPGUIDOrNamed {
     /// Turn this GUID or name into a string that can be passed to the dprun CLI.
+    ///
+    /// Like `to_string()` but does not allocate for the named case.
     fn into_string(self) -> String {
         match self {
             DPGUIDOrNamed::GUID(guid) => to_braced(&guid),
             DPGUIDOrNamed::Named(string) => string,
         }
+    }
+}
+
+impl ToString for DPGUIDOrNamed {
+    fn to_string(&self) -> String {
+        match self {
+            DPGUIDOrNamed::GUID(guid) => to_braced(&guid),
+            DPGUIDOrNamed::Named(string) => string.clone(),
+        }
+    }
+}
+
+impl From<GUID> for DPGUIDOrNamed {
+    fn from(guid: GUID) -> Self {
+        DPGUIDOrNamed::GUID(guid)
+    }
+}
+
+impl From<String> for DPGUIDOrNamed {
+    fn from(string: String) -> Self {
+        DPGUIDOrNamed::Named(string)
+    }
+}
+
+impl From<&str> for DPGUIDOrNamed {
+    fn from(string: &str) -> Self {
+        DPGUIDOrNamed::Named(string.to_string())
     }
 }
 
@@ -58,6 +87,36 @@ pub enum DPAddressValue {
     String(String),
     /// A DirectPlay address part with a binary value.
     Binary(Vec<u8>),
+}
+
+impl From<i32> for DPAddressValue {
+    fn from(number: i32) -> Self {
+        DPAddressValue::Number(number)
+    }
+}
+
+impl From<String> for DPAddressValue {
+    fn from(string: String) -> Self {
+        DPAddressValue::String(string)
+    }
+}
+
+impl From<&str> for DPAddressValue {
+    fn from(string: &str) -> Self {
+        DPAddressValue::String(string.to_string())
+    }
+}
+
+impl From<Vec<u8>> for DPAddressValue {
+    fn from(bytes: Vec<u8>) -> Self {
+        DPAddressValue::Binary(bytes)
+    }
+}
+
+impl From<&[u8]> for DPAddressValue {
+    fn from(bytes: &[u8]) -> Self {
+        DPAddressValue::Binary(bytes.to_vec())
+    }
 }
 
 /// Represents a part of a DirectPlay address, akin to DPCOMPOUNDADDRESSELEMENT in the DirectPlay
@@ -136,7 +195,7 @@ impl DPRunOptionsBuilder {
     /// Set the service provider to use.
     pub fn service_provider(self, service_provider: GUID) -> Self {
         Self {
-            service_provider: Some(DPGUIDOrNamed::GUID(service_provider)),
+            service_provider: Some(service_provider.into()),
             ..self
         }
     }
@@ -144,7 +203,7 @@ impl DPRunOptionsBuilder {
     /// Set the service provider to use, by name.
     pub fn named_service_provider(self, service_provider: &str) -> Self {
         Self {
-            service_provider: Some(DPGUIDOrNamed::Named(service_provider.to_string())),
+            service_provider: Some(service_provider.into()),
             ..self
         }
     }
@@ -196,19 +255,19 @@ impl DPRunOptionsBuilder {
     }
 
     /// Add an address part.
-    pub fn address_part(mut self, data_type: GUID, value: DPAddressValue) -> Self {
+    pub fn address_part(mut self, data_type: GUID, value: impl Into<DPAddressValue>) -> Self {
         self.address.push(DPAddressPart {
-            data_type: DPGUIDOrNamed::GUID(data_type),
-            value,
+            data_type: data_type.into(),
+            value: value.into(),
         });
         self
     }
 
     /// Add an address part.
-    pub fn named_address_part(mut self, data_type: &str, value: DPAddressValue) -> Self {
+    pub fn named_address_part(mut self, data_type: &str, value: impl Into<DPAddressValue>) -> Self {
         self.address.push(DPAddressPart {
-            data_type: DPGUIDOrNamed::Named(data_type.to_string()),
-            value,
+            data_type: data_type.into(),
+            value: value.into(),
         });
         self
     }
@@ -223,10 +282,7 @@ impl DPRunOptionsBuilder {
         if self.service_provider == Some(DPGUIDOrNamed::GUID(*GUID_DPRUNSP))
             || self.service_provider == Some(DPGUIDOrNamed::Named("DPRUN".to_string()))
         {
-            assert!(
-                false,
-                "Must register a service provider handler to use the DPRun service provider."
-            );
+            panic!("Must register a service provider handler to use the DPRun service provider.");
         }
 
         DPRunOptions {
@@ -270,7 +326,8 @@ impl DPRun {
     }
 
     /// Start a game that uses the host server for the DPRun Service Provider.
-    async fn start_with_server(mut self) -> Result<(), io::Error> {
+    #[allow(unused)]
+    async fn start_with_server(self) -> Result<(), io::Error> {
         unimplemented!()
     }
 
@@ -280,11 +337,11 @@ impl DPRun {
     }
 }
 
-fn to_braced(GUID: &GUID) -> String {
+fn to_braced(guid: &GUID) -> String {
     let res = &mut [0u8; 38];
     res[0] = b'{';
     res[37] = b'}';
-    GUID.to_hyphenated().encode_upper(&mut res[1..=36]);
+    guid.to_hyphenated().encode_upper(&mut res[1..=36]);
     String::from_utf8_lossy(res).to_string()
 }
 
@@ -318,11 +375,11 @@ pub fn run(options: DPRunOptions) -> DPRun {
                 part.data_type == DPGUIDOrNamed::GUID(*GUID_INETPORT)
                     || part.data_type == DPGUIDOrNamed::Named("INetPort".to_string())
             })
-            .and_then(|part| {
+            .map(|part| {
                 if let DPAddressValue::Number(val) = part.value {
-                    Some(val as u16)
+                    val as u16
                 } else {
-                    Some(2197)
+                    2197
                 }
             })
     } else {
