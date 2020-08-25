@@ -3,8 +3,8 @@ use async_trait::async_trait;
 use dprun::{structs, AppController, ServiceProvider};
 use futures::future::BoxFuture;
 use libp2p::{
-    core::upgrade, core::UpgradeInfo, identity::Keypair, mdns::Mdns, InboundUpgrade, Multiaddr,
-    OutboundUpgrade, Swarm,
+    core::UpgradeInfo, identity::Keypair, mdns::Mdns, InboundUpgrade, Multiaddr, OutboundUpgrade,
+    Swarm,
 };
 
 #[derive(Debug)]
@@ -98,7 +98,8 @@ impl ServiceProvider for Libp2pSP {
         _id: u32,
         data: structs::EnumSessionsData,
     ) -> io::Result<()> {
-        dbg!(&data);
+        log::debug!("[libp2p] enum sessions");
+        log::debug!("{:?}", &data);
         Ok(())
     }
 
@@ -108,9 +109,12 @@ impl ServiceProvider for Libp2pSP {
         _id: u32,
         _data: structs::OpenData,
     ) -> io::Result<()> {
+        log::debug!("Open libp2p session");
+        log::debug!("--- create transport ---");
         let transport = libp2p::build_development_transport(self.local_key.clone())?;
         // how to make this work?
         // .upgrade(EnumSessionsUpgrade);
+        log::debug!("--- create swarm ---");
         let mut swarm = Swarm::new(
             transport,
             Mdns::new().unwrap(),
@@ -118,15 +122,17 @@ impl ServiceProvider for Libp2pSP {
         );
 
         let _addr = Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse().unwrap()).unwrap();
+        log::debug!("{:?}", _addr);
 
         if let Some(dial_addr) = &self.address {
             Swarm::dial_addr(&mut swarm, dial_addr.clone()).unwrap();
+            log::debug!("{:?}", dial_addr);
         }
 
         async_std::task::spawn(async move {
             loop {
                 let event = swarm.next_event().await;
-                dbg!(event);
+                log::debug!("{:?}", event);
             }
         });
 

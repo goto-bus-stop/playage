@@ -152,6 +152,6 @@ pub fn print_network_message(message: &[u8]) {
         message.read_exact(&mut bytes).unwrap();
         Uuid::from_bytes(bytes)
     };
-    println!("[print_network_message] message from: {:?}", guid);
-    println!("{:#?}", parse_message(message).unwrap());
+    log::debug!("[print_network_message] message from: {:?}", guid);
+    log::debug!("{:#?}", parse_message(message).unwrap());
 }

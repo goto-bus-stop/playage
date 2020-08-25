@@ -31,7 +31,7 @@ impl LocalOnlyServer {
 
     pub fn create_player(&mut self, id: GUID, controller: AppController) {
         self.players.insert(id, controller);
-        println!(
+        log::trace!(
             "Current players: {:?}",
             self.players.keys().collect::<Vec<&GUID>>()
         );
@@ -95,7 +95,10 @@ impl ServiceProvider for LocalOnlySP {
         _id: u32,
         data: EnumSessionsData,
     ) -> io::Result<()> {
-        // println!("[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}", data);
+        log::trace!(
+            "[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}",
+            data
+        );
         self.server
             .lock()
             .await
@@ -110,7 +113,7 @@ impl ServiceProvider for LocalOnlySP {
         _id: u32,
         data: OpenData,
     ) -> io::Result<()> {
-        println!("[LocalOnlySP::open] Got Open message: {:?}", data);
+        log::trace!("[LocalOnlySP::open] Got Open message: {:?}", data);
         Ok(())
     }
 
@@ -120,7 +123,7 @@ impl ServiceProvider for LocalOnlySP {
         _id: u32,
         data: CreatePlayerData,
     ) -> io::Result<()> {
-        println!(
+        log::trace!(
             "[LocalOnlySP::create_player] Got CreatePlayer message: {:?}",
             data
         );
@@ -139,7 +142,7 @@ impl ServiceProvider for LocalOnlySP {
         _id: u32,
         data: ReplyData,
     ) -> io::Result<()> {
-        // println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
+        // log::trace!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
         self.server
             .lock()
             .await
@@ -154,7 +157,7 @@ impl ServiceProvider for LocalOnlySP {
         _id: u32,
         data: SendData,
     ) -> io::Result<()> {
-        // println!("[LocalOnlySP::send] Got Send message: {:?}", data);
+        // log::trace!("[LocalOnlySP::send] Got Send message: {:?}", data);
         self.server
             .lock()
             .await

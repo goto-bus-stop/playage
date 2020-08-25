@@ -39,7 +39,9 @@ struct Cli {
 async fn main() -> anyhow::Result<()> {
     let Cli { sp_type } = Cli::from_args();
 
-    let dpchat = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E")?;
+    femme::with_level(femme::LevelFilter::Trace);
+
+    let dpchat = GUID::parse_str("E9EB4143-0FA4-4E0B-BEB3-C5222657F9F2")?;
     let test_session_id = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E")?;
 
     let dprun_dir = std::env::current_dir()?.join("../dprun/bin/debug");
@@ -102,9 +104,9 @@ async fn main() -> anyhow::Result<()> {
     let host = run(host_options);
     let join = run(join_options);
 
-    println!("Spawning dprun");
-    println!("host CLI: {}", host.command());
-    println!("join CLI: {}", join.command());
+    log::info!("Spawning dprun");
+    log::info!("host CLI: {}", host.command());
+    log::info!("join CLI: {}", join.command());
 
     let host_instance = host.start();
     let join_instance = join.start().delay(Duration::from_secs(3));
@@ -113,7 +115,7 @@ async fn main() -> anyhow::Result<()> {
     let _ = host_result?;
     let _ = join_result?;
 
-    println!("done");
+    log::info!("done");
 
     Ok(())
 }

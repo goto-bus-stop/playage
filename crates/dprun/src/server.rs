@@ -94,7 +94,7 @@ impl AppController {
     pub async fn send(&mut self, data: Vec<u8>) {
         let msg_id = self.next_message_id;
         self.next_message_id += 1;
-        println!("[AppController::send] {}", msg_id);
+        log::debug!("[AppController::send] {}", msg_id);
         self.sender
             .send(AppMessage::Send(msg_id as u32, std::u32::MAX, data))
             .await;
@@ -163,9 +163,11 @@ async fn handle_message(
                 .await
         }
         method => {
-            println!(
+            log::debug!(
                 "[HostServer::process_message] HostServer message: {} {:?}, {:?}",
-                id, method, message
+                id,
+                method,
+                message
             );
             Ok(())
         }
@@ -179,21 +181,21 @@ fn handle_connection(
     sock.set_nodelay(true)?;
     let (mut writer, mut reader) = Framed::new(sock, LengthCodec).split();
     let (mut app_controller, mut app_receiver) = AppController::create();
-    println!("[handle_connection] Connection incoming");
+    log::debug!("[handle_connection] Connection incoming");
 
     let read_future = async move {
         while let Some(message) = reader.next().await {
             let mut message = match message {
                 Ok(message) if message.len() > 12 => message,
                 Ok(message) => {
-                    eprintln!(
+                    log::warn!(
                         "[handle_connection] invalid message, too short: {:?}",
                         message
                     );
                     continue;
                 }
                 Err(err) => {
-                    eprintln!("[handle_connection] Request error: {:?}", err);
+                    log::warn!("[handle_connection] Request error: {:?}", err);
                     continue;
                 }
             };
@@ -218,16 +220,17 @@ fn handle_connection(
             .await
             .unwrap();
         }
-        println!("[handle_connection] Connection finished");
+        log::debug!("[handle_connection] Connection finished");
     };
 
     let write_future = async move {
         while let Some(app_message) = app_receiver.next().await {
             match app_message {
                 AppMessage::Send(msg_id, reply_to_id, data) => {
-                    println!(
+                    log::debug!(
                         "[handle_connection] Send message {} in reply to {}",
-                        msg_id, reply_to_id
+                        msg_id,
+                        reply_to_id
                     );
                     let mut message = vec![0; data.len() + 12];
                     (&mut message[0..4]).copy_from_slice(&msg_id.to_be_bytes());
@@ -272,7 +275,7 @@ impl HostServer {
     }
 
     pub async fn start(self) -> io::Result<(impl Future<Output = ()>, ServerController)> {
-        println!(
+        log::debug!(
             "[HostServer::start] Starting HostServer on {:?}",
             self.address
         );
@@ -289,7 +292,7 @@ impl HostServer {
 
             let mut stream = futures::stream::select(socket_messages, control_messages);
             while let Some(message) = stream.next().await {
-                println!("[HostServer::start] Receiving message: {:?}", message);
+                log::debug!("[HostServer::start] Receiving message: {:?}", message);
                 let message = match message {
                     Err(_) => break,
                     Ok(EventType::Control(ControlMessage::Stop)) => break,
@@ -297,7 +300,7 @@ impl HostServer {
                 };
 
                 if let EventType::Socket(socket) = message {
-                    println!("[HostServer::start] Spawning socket handler...");
+                    log::debug!("[HostServer::start] Spawning socket handler...");
                     handle_connection(Arc::clone(&service_provider), socket).unwrap();
                 }
             }
