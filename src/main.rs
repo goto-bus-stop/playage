@@ -1,11 +1,13 @@
 use async_std::prelude::*;
-use dprun::{run, DPRunOptions, GUID};
-// use dpsp_libp2p::Libp2pSP;
 use async_std::sync::{Arc, Mutex};
+use dprun::{run, DPRunOptions, GUID};
 use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
+use std::str::FromStr;
 use std::time::Duration;
+use structopt::StructOpt;
+// use dpsp_libp2p::Libp2pSP;
 
-#[derive(PartialEq, Eq)]
+#[derive(Debug, PartialEq, Eq)]
 enum SPType {
     TCPIP,
     #[allow(dead_code)]
@@ -14,15 +16,33 @@ enum SPType {
     P2P,
 }
 
+impl FromStr for SPType {
+    type Err = &'static str;
+    fn from_str(input: &str) -> Result<SPType, Self::Err> {
+        match input {
+            "tcp" => Ok(SPType::TCPIP),
+            "local" => Ok(SPType::Local),
+            "p2p" => Ok(SPType::P2P),
+            _ => Err("unknown sp-type, must be tcp, local, p2p"),
+        }
+    }
+}
+
+#[derive(Debug, StructOpt)]
+struct Cli {
+    #[structopt(long, short = "t", default_value = "tcp")]
+    sp_type: SPType,
+}
+
 /// Test app that sets up a DPChat session.
 #[async_std::main]
 async fn main() -> anyhow::Result<()> {
+    let Cli { sp_type } = Cli::from_args();
+
     let dpchat = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E")?;
     let test_session_id = GUID::parse_str("5BFDB060-06A4-11D0-9C4F-00A0C905425E")?;
 
     let dprun_dir = std::env::current_dir()?.join("../dprun/bin/debug");
-
-    let use_sp = SPType::TCPIP;
 
     let mut host_options = DPRunOptions::builder()
         .host(Some(test_session_id))
@@ -39,7 +59,7 @@ async fn main() -> anyhow::Result<()> {
     let host_guid = GUID::new_v4();
     let join_guid = GUID::new_v4();
 
-    match use_sp {
+    match sp_type {
         SPType::Local => {
             let local_server = Arc::new(Mutex::new(LocalOnlyServer::make()));
 

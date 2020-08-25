@@ -16,6 +16,7 @@ uuid = { version = "0.8", features = ["v4"] }
 wololokingdoms = { path = "crates/wololokingdoms" }
 byteorder = "1.3.4"
 futures = "0.3.5"
+structopt = "0.3.16"
 
 [dev-dependencies]
 progress = "0.2"
