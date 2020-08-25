@@ -11,10 +11,11 @@ aoc-userpatch = { path = "crates/aoc-userpatch" }
 async-std = { version = "1.6", features = ["attributes", "unstable"] }
 dprun = { path = "crates/dprun" }
 # dpsp-libp2p = { path = "crates/dpsp-libp2p" }
-# dpsp-local-only = { path = "crates/dpsp-local-only" }
+dpsp-local-only = { path = "crates/dpsp-local-only" }
 uuid = { version = "0.8", features = ["v4"] }
 wololokingdoms = { path = "crates/wololokingdoms" }
 byteorder = "1.3.4"
+futures = "0.3.5"
 
 [dev-dependencies]
 progress = "0.2"

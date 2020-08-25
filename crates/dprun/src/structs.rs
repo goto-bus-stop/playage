@@ -1,5 +1,5 @@
-use std::io::{self, Read, Cursor};
 use byteorder::{ReadBytesExt, LE};
+use std::io::{self, Cursor, Read};
 use uuid::Uuid;
 
 pub type DPID = i32;

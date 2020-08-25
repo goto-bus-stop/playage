@@ -1,7 +1,8 @@
 use async_std::prelude::*;
 use dprun::{run, DPRunOptions, GUID};
 // use dpsp_libp2p::Libp2pSP;
-// use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
+use async_std::sync::{Arc, Mutex};
+use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
 use std::time::Duration;
 
 #[derive(PartialEq, Eq)]
@@ -40,21 +41,18 @@ async fn main() -> anyhow::Result<()> {
 
     match use_sp {
         SPType::Local => {
-            unimplemented!()
-            /*
             let local_server = Arc::new(Mutex::new(LocalOnlyServer::make()));
 
             host_options = host_options
                 .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
                 .named_address_part("INet", "127.0.0.1")
                 .named_address_part("INetPort", 2197)
-                .named_address_part("SelfID", host_guid.as_bytes());
+                .named_address_part("SelfID", host_guid.as_bytes().to_vec());
             join_options = join_options
                 .service_provider_handler(Box::new(LocalOnlySP::new(Arc::clone(&local_server))))
                 .named_address_part("INet", "127.0.0.1")
                 .named_address_part("INetPort", 2198)
-                .named_address_part("SelfID", join_guid.as_bytes());
-            */
+                .named_address_part("SelfID", join_guid.as_bytes().to_vec());
         }
         SPType::P2P => {
             unimplemented!()

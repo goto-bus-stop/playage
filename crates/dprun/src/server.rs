@@ -1,7 +1,7 @@
 use crate::{inspect::print_network_message, structs::*};
 use async_std::io;
 use async_std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
-use async_std::sync::{Arc, Mutex, channel, Receiver, Sender};
+use async_std::sync::{channel, Arc, Mutex, Receiver, Sender};
 use async_trait::async_trait;
 use futures::sink::SinkExt;
 use futures::stream::StreamExt;
@@ -215,7 +215,8 @@ fn handle_connection(
                 &method,
                 &message,
             )
-            .await.unwrap();
+            .await
+            .unwrap();
         }
         println!("[handle_connection] Connection finished");
     };

@@ -1,5 +1,5 @@
-use std::io::{self, Cursor, Read};
 use byteorder::{ReadBytesExt, LE};
+use std::io::{self, Cursor, Read};
 use uuid::Uuid;
 
 struct CmdId(u16);
@@ -47,11 +47,15 @@ fn parse_cmd(cmd: u16, mut message: impl Read) -> io::Result<Command> {
             };
             std::io::copy(
                 &mut message.by_ref().take((size - 24) as u64),
-                &mut std::io::sink())?;
+                &mut std::io::sink(),
+            )?;
             let _name_offset = message.read_u32::<LE>()?;
             let mut name = vec![];
             message.read_to_end(&mut name)?;
-            Ok(Command::EnumSessionsReply(String::from_utf8_lossy(&name).to_string(), guid))
+            Ok(Command::EnumSessionsReply(
+                String::from_utf8_lossy(&name).to_string(),
+                guid,
+            ))
         }
         0x02 => {
             let guid = {
@@ -111,7 +115,9 @@ fn parse_cmd(cmd: u16, mut message: impl Read) -> io::Result<Command> {
             let total = message.read_u32::<LE>()?;
             if total == 1 {
                 std::io::copy(&mut message.by_ref().take(8), &mut std::io::sink())?;
-                Ok(Command::PacketizedMessage(Box::new(parse_message(message)?)))
+                Ok(Command::PacketizedMessage(Box::new(parse_message(
+                    message,
+                )?)))
             } else {
                 Ok(Command::PacketizedData(index, total))
             }

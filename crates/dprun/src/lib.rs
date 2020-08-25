@@ -7,7 +7,7 @@
 
 mod inspect;
 mod server;
-mod structs;
+pub mod structs;
 
 use crate::server::HostServer;
 use async_process::Command;
