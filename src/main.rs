@@ -1,11 +1,11 @@
 use async_std::prelude::*;
 use async_std::sync::{Arc, Mutex};
 use dprun::{run, DPRunOptions, GUID};
+use dpsp_libp2p::Libp2pSP;
 use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
 use std::str::FromStr;
 use std::time::Duration;
 use structopt::StructOpt;
-// use dpsp_libp2p::Libp2pSP;
 
 #[derive(Debug, PartialEq, Eq)]
 enum SPType {
@@ -75,19 +75,16 @@ async fn main() -> anyhow::Result<()> {
                 .named_address_part("SelfID", join_guid.as_bytes().to_vec());
         }
         SPType::P2P => {
-            unimplemented!()
-            /*
             host_options = host_options
                 .service_provider_handler(Box::new(Libp2pSP::default()))
                 .named_address_part("INet", "127.0.0.1")
                 .named_address_part("INetPort", 2197)
-                .named_address_part("SelfID", host_guid.as_bytes());
+                .named_address_part("SelfID", host_guid.as_bytes().to_vec());
             join_options = join_options
                 .service_provider_handler(Box::new(Libp2pSP::default()))
                 .named_address_part("INet", "127.0.0.1")
                 .named_address_part("INetPort", 2198)
-                .named_address_part("SelfID", join_guid.as_bytes());
-            */
+                .named_address_part("SelfID", join_guid.as_bytes().to_vec());
         }
         SPType::TCPIP => {
             host_options = host_options
