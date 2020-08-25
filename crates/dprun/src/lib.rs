@@ -10,8 +10,9 @@ mod server;
 pub mod structs;
 
 use crate::server::HostServer;
-use async_process::Command;
-use std::io;
+use async_process::{Command, Stdio};
+use async_std::io::{self, BufReader};
+use async_std::prelude::*;
 use std::path::PathBuf;
 
 pub use crate::server::{AppController, ServiceProvider};
@@ -343,10 +344,29 @@ impl DPRun {
 
         let (server, mut controller) = server.start().await?;
         let mut command = self.command;
-        let mut child = command.spawn()?;
+        let mut child = command
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()?;
 
         let command_future = async move {
             let mut result = Ok(());
+
+            let mut stdout = BufReader::new(child.stdout.as_mut().unwrap()).lines();
+            let mut stderr = BufReader::new(child.stderr.as_mut().unwrap()).lines();
+
+            futures::join!(
+                async move {
+                    while let Some(Ok(line)) = stdout.next().await {
+                        log::trace!("out {}", line);
+                    }
+                },
+                async move {
+                    while let Some(Ok(line)) = stderr.next().await {
+                        log::trace!("err {}", line);
+                    }
+                }
+            );
 
             let status = child.status().await?;
             if status.success() {

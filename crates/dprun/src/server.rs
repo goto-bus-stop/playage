@@ -196,7 +196,7 @@ fn handle_connection(
                 }
                 Err(err) => {
                     log::warn!("[handle_connection] Request error: {:?}", err);
-                    continue;
+                    break;
                 }
             };
             let id = {
