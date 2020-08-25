@@ -1,13 +1,13 @@
-use bytes::Buf;
-use std::{io::Cursor, mem};
+use std::io::{self, Read, Cursor};
+use byteorder::{ReadBytesExt, LE};
 use uuid::Uuid;
 
 pub type DPID = i32;
 
-fn read_guid(read: &mut dyn Buf) -> Uuid {
+fn read_guid(mut read: impl Read) -> io::Result<Uuid> {
     let mut guid = [0; 16];
-    read.copy_to_slice(&mut guid);
-    Uuid::from_bytes(guid)
+    read.read_exact(&mut guid)?;
+    Ok(Uuid::from_bytes(guid))
 }
 
 #[derive(Debug)]
@@ -20,12 +20,12 @@ pub struct CreatePlayerData {
 
 impl CreatePlayerData {
     pub fn parse(bytes: &[u8]) -> Self {
-        let mut read = Cursor::new(bytes);
+        let mut cursor = Cursor::new(bytes);
 
-        let _dpid = read.get_i32_le();
-        let guid = read_guid(&mut read);
+        let _dpid = cursor.read_u32::<LE>().unwrap();
+        let guid = read_guid(&mut cursor).unwrap();
 
-        let flags = read.get_i32_le();
+        let flags = cursor.read_i32::<LE>().unwrap();
 
         Self {
             // player_id: dpid,
@@ -52,11 +52,18 @@ pub struct OpenData {
 
 impl OpenData {
     pub fn parse(bytes: &[u8]) -> Self {
-        assert_eq!(bytes.len(), mem::size_of::<Self>());
-        let mut buffer = [0; mem::size_of::<Self>()];
-        buffer.copy_from_slice(bytes);
-        let cast: Self = unsafe { mem::transmute(buffer) };
-        cast
+        let mut cursor = Cursor::new(bytes);
+        let create = cursor.read_u8().unwrap() != 0;
+        let return_status = cursor.read_u8().unwrap() != 0;
+        let _padding = cursor.read_u16::<LE>().unwrap();
+        let open_flags = cursor.read_i32::<LE>().unwrap();
+        let session_flags = cursor.read_i32::<LE>().unwrap();
+        Self {
+            create,
+            return_status,
+            open_flags,
+            session_flags,
+        }
     }
 }
 
@@ -71,20 +78,20 @@ pub struct SendData {
 
 impl SendData {
     pub fn parse(bytes: &[u8]) -> Self {
-        let mut read = Cursor::new(bytes);
+        let mut cursor = Cursor::new(bytes);
 
-        let flags = read.get_i32_le();
+        let flags = cursor.read_i32::<LE>().unwrap();
 
-        let receiver_id = match read_guid(&mut read) {
+        let receiver_id = match read_guid(&mut cursor).unwrap() {
             guid if guid == Uuid::nil() => None,
             guid => Some(guid),
         };
-        let sender_id = read_guid(&mut read);
+        let sender_id = read_guid(&mut cursor).unwrap();
 
-        let system_message = read.get_i32_le() != 0;
-        let message_size = read.get_i32_le();
+        let system_message = cursor.read_i32::<LE>().unwrap() != 0;
+        let message_size = cursor.read_i32::<LE>().unwrap();
         let mut message = vec![0; message_size as usize];
-        read.copy_to_slice(&mut message);
+        cursor.read_exact(&mut message).unwrap();
 
         Self {
             flags,
@@ -105,14 +112,14 @@ pub struct ReplyData {
 
 impl ReplyData {
     pub fn parse(bytes: &[u8]) -> Self {
-        let mut read = Cursor::new(bytes);
+        let mut cursor = Cursor::new(bytes);
 
-        let reply_to = read_guid(&mut read);
+        let reply_to = read_guid(&mut cursor).unwrap();
 
-        let name_server_id = read.get_i32_le();
-        let message_size = read.get_i32_le();
+        let name_server_id = cursor.read_i32::<LE>().unwrap();
+        let message_size = cursor.read_i32::<LE>().unwrap();
         let mut message = vec![0; message_size as usize];
-        read.copy_to_slice(&mut message);
+        cursor.read_exact(&mut message).unwrap();
 
         Self {
             reply_to,

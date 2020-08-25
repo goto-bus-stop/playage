@@ -1,5 +1,5 @@
 use async_std::prelude::*;
-use dprun2::{run, DPRunOptions, GUID};
+use dprun::{run, DPRunOptions, GUID};
 // use dpsp_libp2p::Libp2pSP;
 // use dpsp_local_only::{LocalOnlySP, LocalOnlyServer};
 use std::time::Duration;

@@ -9,7 +9,7 @@ anyhow = "1.0.32"
 aoc-spectate = { path = "crates/aoc-spectate" }
 aoc-userpatch = { path = "crates/aoc-userpatch" }
 async-std = { version = "1.6", features = ["attributes", "unstable"] }
-dprun2 = { path = "crates/dprun2" }
+dprun = { path = "crates/dprun" }
 # dpsp-libp2p = { path = "crates/dpsp-libp2p" }
 # dpsp-local-only = { path = "crates/dpsp-local-only" }
 uuid = { version = "0.8", features = ["v4"] }
@@ -27,7 +27,6 @@ members = [
   "crates/aoc-userpatch",
   "crates/aoc-spectate",
   "crates/dprun",
-  "crates/dprun2",
   "crates/dpsp-libp2p",
   "crates/dpsp-local-only",
   "crates/wololokingdoms"
