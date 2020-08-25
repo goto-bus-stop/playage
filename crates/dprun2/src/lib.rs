@@ -274,23 +274,28 @@ impl DPRunOptionsBuilder {
 
     /// Check the options and build the DPRunOptions struct.
     pub fn finish(self) -> DPRunOptions {
-        assert!(self.session_type.is_some());
-        assert!(self.player_name.is_some());
-        assert!(self.service_provider.is_some());
-        assert!(self.application.is_some());
-
-        if self.service_provider == Some(DPGUIDOrNamed::GUID(*GUID_DPRUNSP))
-            || self.service_provider == Some(DPGUIDOrNamed::Named("DPRUN".to_string()))
+        let session_type = self.session_type.expect("must set a session type");
+        let player_name = self.player_name.expect("must set a player name");
+        let service_provider = self.service_provider.expect("must set a service provider");
+        let application = self
+            .application
+            .expect("must set an application GUID to run");
+        if service_provider == DPGUIDOrNamed::GUID(*GUID_DPRUNSP)
+            || service_provider == DPGUIDOrNamed::Named("DPRUN".to_string())
         {
-            panic!("Must register a service provider handler to use the DPRun service provider.");
+            assert!(
+                // self.service_provider_handler.is_some(),
+                false,
+                "must register a service provider handler to use the DPRun service provider",
+            );
         }
 
         DPRunOptions {
-            session_type: self.session_type.unwrap(),
-            player_name: self.player_name.unwrap(),
-            service_provider: self.service_provider.unwrap(),
+            session_type,
+            player_name,
+            service_provider,
             // service_provider_handler: self.service_provider_handler,
-            application: self.application.unwrap(),
+            application,
             address: self.address,
             session_name: self.session_name,
             session_password: self.session_password,
@@ -302,6 +307,7 @@ impl DPRunOptionsBuilder {
 /// Represents a dprun game session.
 pub struct DPRun {
     command: Command,
+    #[allow(dead_code)]
     host_server_port: Option<u16>,
     // service_provider: Option<Box<dyn ServiceProvider>>,
 }
