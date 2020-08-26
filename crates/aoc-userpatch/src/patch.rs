@@ -51,10 +51,6 @@ fn apply_patch(buffer: &mut [u8], offset: usize, patch: &[u8]) {
 
 include!(concat!(env!("OUT_DIR"), "/injections.rs"));
 
-pub fn get_available_features() -> &'static [Feature] {
-    &FEATURES
-}
-
 fn configure_features(options: &InstallOptions) -> Vec<Feature> {
     FEATURES
         .iter()
