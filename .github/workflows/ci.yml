@@ -26,6 +26,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: check
+        env:
+          CC: gcc-9
+          CXX: g++-9
 
   test:
     name: Test Suite
@@ -56,6 +59,9 @@ jobs:
         uses: actions-rs/cargo@v1
         with:
           command: test
+        env:
+          CC: gcc-9
+          CXX: g++-9
 
   fmt:
     name: Rustfmt
@@ -107,3 +113,6 @@ jobs:
         with:
           command: clippy
           args: -- -D warnings
+        env:
+          CC: gcc-9
+          CXX: g++-9
