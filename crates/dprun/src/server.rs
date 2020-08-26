@@ -1,16 +1,12 @@
 use crate::{inspect::print_network_message, structs::*};
-use bytes::{BigEndian, BufMut, ByteOrder, Bytes, BytesMut};
-use futures::sync::mpsc::{channel, Receiver, SendError, Sender};
-use std::{
-    net::{IpAddr, Ipv4Addr, SocketAddr},
-    sync::{Arc, Mutex},
-};
-use tokio::{
-    codec::{Framed, LengthDelimitedCodec},
-    io::Result,
-    net::{TcpListener, TcpStream},
-    prelude::*,
-};
+use async_std::io;
+use async_std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
+use async_std::sync::{channel, Arc, Mutex, Receiver, Sender};
+use async_trait::async_trait;
+use futures::sink::SinkExt;
+use futures::stream::StreamExt;
+use futures_codec::{Framed, LengthCodec};
+use std::future::Future;
 
 #[derive(Debug)]
 pub enum ControlMessage {
@@ -24,41 +20,29 @@ pub enum AppMessage {
     Send(u32, u32, Vec<u8>),
 }
 
-type AnyBoxedFuture = Box<dyn Future<Item = (), Error = std::io::Error> + Send>;
-pub struct SPFuture {
-    inner: AnyBoxedFuture,
-}
-impl SPFuture {
-    pub fn new(inner: AnyBoxedFuture) -> Self {
-        Self { inner }
-    }
-}
-impl Future for SPFuture {
-    type Item = ();
-    type Error = std::io::Error;
-
-    fn poll(&mut self) -> std::result::Result<Async<Self::Item>, Self::Error> {
-        self.inner.poll()
-    }
-}
-
 /// Trait for custom Service Provider implementations.
+#[async_trait]
 pub trait ServiceProvider: Sync + Send {
-    fn enum_sessions(
+    async fn enum_sessions(
         &mut self,
         controller: AppController,
         id: u32,
         data: EnumSessionsData,
-    ) -> SPFuture;
-    fn open(&mut self, controller: AppController, id: u32, data: OpenData) -> SPFuture;
-    fn create_player(
+    ) -> io::Result<()>;
+    async fn open(&mut self, controller: AppController, id: u32, data: OpenData) -> io::Result<()>;
+    async fn create_player(
         &mut self,
         controller: AppController,
         id: u32,
         data: CreatePlayerData,
-    ) -> SPFuture;
-    fn reply(&mut self, controller: AppController, id: u32, data: ReplyData) -> SPFuture;
-    fn send(&mut self, controller: AppController, id: u32, data: SendData) -> SPFuture;
+    ) -> io::Result<()>;
+    async fn reply(
+        &mut self,
+        controller: AppController,
+        id: u32,
+        data: ReplyData,
+    ) -> io::Result<()>;
+    async fn send(&mut self, controller: AppController, id: u32, data: SendData) -> io::Result<()>;
 }
 
 /// Struct containing methods to control the service provider host server.
@@ -83,8 +67,8 @@ impl ServerController {
     /// Stop the host server.
     ///
     /// Returns a Future, so make sure to consume it.
-    pub fn stop(&mut self) -> futures::StartSend<ControlMessage, SendError<ControlMessage>> {
-        self.sender.start_send(ControlMessage::Stop)
+    pub async fn stop(&mut self) {
+        self.sender.send(ControlMessage::Stop).await;
     }
 }
 
@@ -107,80 +91,85 @@ impl AppController {
         (controller, receiver)
     }
 
-    pub fn send(&mut self, data: Vec<u8>) -> futures::StartSend<AppMessage, SendError<AppMessage>> {
+    pub async fn send(&mut self, data: Vec<u8>) {
         let msg_id = self.next_message_id;
         self.next_message_id += 1;
-        println!("[AppController::send] {}", msg_id);
+        log::debug!("[AppController::send] {}", msg_id);
         self.sender
-            .start_send(AppMessage::Send(msg_id as u32, std::u32::MAX, data))
+            .send(AppMessage::Send(msg_id as u32, std::u32::MAX, data))
+            .await;
     }
 
-    pub fn reply(
-        &mut self,
-        id: u32,
-        data: Vec<u8>,
-    ) -> futures::StartSend<AppMessage, SendError<AppMessage>> {
+    pub async fn reply(&mut self, id: u32, data: Vec<u8>) {
         let msg_id = self.next_message_id;
         self.next_message_id += 1;
         self.sender
-            .start_send(AppMessage::Send(msg_id as u32, id, data))
+            .send(AppMessage::Send(msg_id as u32, id, data))
+            .await;
     }
 }
 
-fn handle_message(
+async fn handle_message(
     service_provider: Arc<Mutex<Box<dyn ServiceProvider>>>,
     controller: &mut AppController,
     id: u32,
     method: &[u8],
     message: &[u8],
-) -> impl Future<Item = (), Error = std::io::Error> {
+) -> io::Result<()> {
     match method {
         b"enum" => {
             let enum_sessions = EnumSessionsData {
                 message: message.to_vec(),
             };
-            print_network_message(Bytes::from(&enum_sessions.message[..]));
+            print_network_message(message);
             service_provider
                 .lock()
-                .unwrap()
+                .await
                 .enum_sessions(controller.clone(), id, enum_sessions)
+                .await
         }
         b"open" => {
             let open = OpenData::parse(message);
             service_provider
                 .lock()
-                .unwrap()
+                .await
                 .open(controller.clone(), id, open)
+                .await
         }
         b"crpl" => {
             let create_player = CreatePlayerData::parse(message);
             service_provider
                 .lock()
-                .unwrap()
+                .await
                 .create_player(controller.clone(), id, create_player)
+                .await
         }
         b"repl" => {
             let reply = ReplyData::parse(message);
-            print_network_message(Bytes::from(&reply.message[..]));
+            print_network_message(message);
             service_provider
                 .lock()
-                .unwrap()
+                .await
                 .reply(controller.clone(), id, reply)
+                .await
         }
         b"send" => {
             let send = SendData::parse(message);
-            print_network_message(Bytes::from(&send.message[..]));
+            print_network_message(message);
             service_provider
                 .lock()
-                .unwrap()
+                .await
                 .send(controller.clone(), id, send)
+                .await
         }
         method => {
-            println!(
+            log::debug!(
                 "[HostServer::process_message] HostServer message: {} {:?}, {:?}",
-                id, method, message
+                id,
+                method,
+                message
             );
-            SPFuture::new(Box::new(future::finished(())))
+            Ok(())
         }
     }
 }
@@ -188,16 +177,38 @@ fn handle_message(
 fn handle_connection(
     service_provider: Arc<Mutex<Box<dyn ServiceProvider>>>,
     sock: TcpStream,
-) -> Result<()> {
+) -> io::Result<()> {
     sock.set_nodelay(true)?;
-    let (writer, reader) = Framed::new(sock, LengthDelimitedCodec::new()).split();
-    let (mut app_controller, receiver) = AppController::create();
-    println!("[handle_connection] Connection incoming");
+    let (mut writer, mut reader) = Framed::new(sock, LengthCodec).split();
+    let (mut app_controller, mut app_receiver) = AppController::create();
+    log::debug!("[handle_connection] Connection incoming");
 
-    let read_future = reader
-        .for_each(move |mut message| {
-            let id = BigEndian::read_u32(&message.split_to(4));
-            let _reply_id = BigEndian::read_u32(&message.split_to(4));
+    let read_future = async move {
+        while let Some(message) = reader.next().await {
+            let mut message = match message {
+                Ok(message) if message.len() > 12 => message,
+                Ok(message) => {
+                    log::warn!(
+                        "[handle_connection] invalid message, too short: {:?}",
+                        message
+                    );
+                    continue;
+                }
+                Err(err) => {
+                    log::warn!("[handle_connection] Request error: {:?}", err);
+                    break;
+                }
+            };
+            let id = {
+                let mut bytes = [0; 4];
+                bytes.copy_from_slice(&message.split_to(4));
+                u32::from_be_bytes(bytes)
+            };
+            let _reply_id = {
+                let mut bytes = [0; 4];
+                bytes.copy_from_slice(&message.split_to(4));
+                u32::from_be_bytes(bytes)
+            };
             let method = message.split_to(4);
             handle_message(
                 Arc::clone(&service_provider),
@@ -206,39 +217,34 @@ fn handle_connection(
                 &method,
                 &message,
             )
-        })
-        .then(|result| {
-            println!("[handle_connection] Connection finished");
-            result
-        })
-        .map_err(|e| {
-            eprintln!("[handle_connection] Request error: {:?}", e);
-        });
+            .await
+            .unwrap();
+        }
+        log::debug!("[handle_connection] Connection finished");
+    };
 
-    let app_messages = receiver
-        .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "this should never happen"))
-        .map(|app_message| match app_message {
-            AppMessage::Send(msg_id, reply_to_id, data) => {
-                println!(
-                    "[handle_connection] Send message {} in reply to {}",
-                    msg_id, reply_to_id
-                );
-                let mut message = BytesMut::with_capacity(data.len() + 12);
-                message.put_u32_be(msg_id);
-                message.put_u32_be(reply_to_id);
-                message.put_u32_be(0);
-                message.put(&data);
-                message.freeze()
+    let write_future = async move {
+        while let Some(app_message) = app_receiver.next().await {
+            match app_message {
+                AppMessage::Send(msg_id, reply_to_id, data) => {
+                    log::debug!(
+                        "[handle_connection] Send message {} in reply to {}",
+                        msg_id,
+                        reply_to_id
+                    );
+                    let mut message = vec![0; data.len() + 12];
+                    (&mut message[0..4]).copy_from_slice(&msg_id.to_be_bytes());
+                    (&mut message[4..8]).copy_from_slice(&reply_to_id.to_be_bytes());
+                    (&mut message[8..12]).copy_from_slice(&0u32.to_be_bytes());
+                    (&mut message[12..]).copy_from_slice(&data);
+                    writer.send(message.into()).await.unwrap();
+                }
             }
-        });
+        }
+    };
 
-    let write_future = writer.send_all(app_messages).map_err(|e| {
-        eprintln!("[handle_connection] Send app message error: {:?}", e);
-    });
-
-    let future = read_future.join(write_future).map(|_| ());
-
-    tokio::spawn(future);
+    async_std::task::spawn(read_future);
+    async_std::task::spawn(write_future);
     Ok(())
 }
 
@@ -268,45 +274,37 @@ impl HostServer {
         }
     }
 
-    pub fn start(
-        self,
-    ) -> Result<(
-        impl Future<Item = (), Error = std::io::Error>,
-        ServerController,
-    )> {
-        println!(
+    pub async fn start(self) -> io::Result<(impl Future<Output = ()>, ServerController)> {
+        log::debug!(
             "[HostServer::start] Starting HostServer on {:?}",
             self.address
         );
-        let client = TcpListener::bind(&self.address)?;
+        let client = TcpListener::bind(&self.address).await?;
 
         let service_provider = Arc::new(Mutex::new(self.service_provider));
         let _server_controller = self.controller.clone();
-        let control_messages = self
-            .receiver
-            .map(EventType::Control)
-            .map_err(|_| std::io::Error::new(std::io::ErrorKind::Other, "Control stream ended"));
+        let receiver = self.receiver;
+        let server = async move {
+            let control_messages = receiver.map(EventType::Control).map(io::Result::Ok);
+            let socket_messages = client
+                .incoming()
+                .map(|result| result.map(EventType::Socket));
 
-        let server = client
-            .incoming()
-            .map(EventType::Socket)
-            .select(control_messages)
-            .map(|message| {
-                println!("[HostServer::start] Receiving message: {:?}", message);
-                message
-            })
-            .take_while(move |message| match message {
-                EventType::Control(ControlMessage::Stop) => future::finished(false),
-                _ => future::finished(true),
-            })
-            .filter_map(move |message| match message {
-                EventType::Socket(sock) => Some(sock),
-                _ => None,
-            })
-            .for_each(move |sock| {
-                println!("[HostServer::start] Spawning socket handler...");
-                future::result(handle_connection(Arc::clone(&service_provider), sock))
-            });
+            let mut stream = futures::stream::select(socket_messages, control_messages);
+            while let Some(message) = stream.next().await {
+                log::debug!("[HostServer::start] Receiving message: {:?}", message);
+                let message = match message {
+                    Err(_) => break,
+                    Ok(EventType::Control(ControlMessage::Stop)) => break,
+                    Ok(message) => message,
+                };
+
+                if let EventType::Socket(socket) = message {
+                    log::debug!("[HostServer::start] Spawning socket handler...");
+                    handle_connection(Arc::clone(&service_provider), socket).unwrap();
+                }
+            }
+        };
 
         Ok((server, self.controller))
     }

@@ -5,12 +5,18 @@ authors = ["Renée Kooi <renee@kooi.me>"]
 edition = "2018"
 
 [dependencies]
-aoc-userpatch = { path = "crates/aoc-userpatch" }
+anyhow = "1.0.32"
 aoc-spectate = { path = "crates/aoc-spectate" }
+aoc-userpatch = { path = "crates/aoc-userpatch" }
 async-std = { version = "1.6", features = ["attributes", "unstable"] }
-dprun2 = { path = "crates/dprun2" }
-# dpsp-local-only = { path = "crates/dpsp-local-only" }
-# dpsp-libp2p = { path = "crates/dpsp-libp2p" }
+byteorder = "1.3.4"
+dprun = { path = "crates/dprun" }
+dpsp-libp2p = { path = "crates/dpsp-libp2p" }
+dpsp-local-only = { path = "crates/dpsp-local-only" }
+femme = "2.1.1"
+futures = "0.3.5"
+log = "0.4.11"
+structopt = "0.3.17"
 uuid = { version = "0.8", features = ["v4"] }
 wololokingdoms = { path = "crates/wololokingdoms" }
 
@@ -25,7 +31,6 @@ members = [
   "crates/aoc-userpatch",
   "crates/aoc-spectate",
   "crates/dprun",
-  "crates/dprun2",
   "crates/dpsp-libp2p",
   "crates/dpsp-local-only",
   "crates/wololokingdoms"

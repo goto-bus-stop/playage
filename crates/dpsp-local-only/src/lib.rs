@@ -1,10 +1,13 @@
-use dprun::{structs::*, AppController, SPFuture, ServiceProvider, DPID, GUID};
+use async_std::io;
+use async_std::sync::{Arc, Mutex};
+use async_trait::async_trait;
+use dprun::{structs::*, AppController, ServiceProvider, DPID, GUID};
 use std::collections::HashMap;
-use std::sync::{Arc, Mutex};
-use tokio::prelude::*;
 
+#[allow(dead_code)]
 const DPLAYI_PLAYER_SYSPLAYER: i32 = 1;
 const DPLAYI_PLAYER_NAMESRVR: i32 = 2;
+#[allow(dead_code)]
 const DPLAYI_PLAYER_LOCAL: i32 = 8;
 
 pub struct LocalOnlyServer {
@@ -28,43 +31,45 @@ impl LocalOnlyServer {
 
     pub fn create_player(&mut self, id: GUID, controller: AppController) {
         self.players.insert(id, controller);
-        println!(
+        log::trace!(
             "Current players: {:?}",
             self.players.keys().collect::<Vec<&GUID>>()
         );
     }
 
-    pub fn enum_sessions(&mut self, message: &[u8], requester: AppController) {
+    pub async fn enum_sessions(&mut self, message: &[u8], requester: AppController) {
         self.enumers.insert(0, requester);
         match self.name_server {
-            Some(ref mut name_server) => name_server.send(message.to_vec()).unwrap(),
+            Some(ref mut name_server) => name_server.send(message.to_vec()).await,
             None => panic!("EnumSessions'd without a host"),
         };
     }
 
-    fn reply(&mut self, id: GUID, data: &[u8]) {
+    async fn reply(&mut self, id: GUID, data: &[u8]) {
         match self.players.get_mut(&id) {
             Some(player) => {
-                player.send(data.to_vec()).unwrap();
+                player.send(data.to_vec()).await;
             }
             None => {
-                self.enumers.values_mut().for_each(|player| {
-                    player.send(data.to_vec()).unwrap();
-                });
+                let futures = self
+                    .enumers
+                    .values_mut()
+                    .map(|player| player.send(data.to_vec()));
+                let _ = futures::future::join_all(futures).await;
             }
         }
     }
 
-    fn send(&mut self, to_player_id: Option<GUID>, data: &[u8]) {
+    async fn send(&mut self, to_player_id: Option<GUID>, data: &[u8]) {
         match to_player_id {
             Some(ref id) => {
                 if let Some(player) = self.players.get_mut(id) {
-                    player.send(data.to_vec()).unwrap();
+                    player.send(data.to_vec()).await;
                 }
             }
             None => match self.name_server {
                 Some(ref mut name_server) => {
-                    name_server.send(data.to_vec()).unwrap();
+                    name_server.send(data.to_vec()).await;
                 }
                 None => panic!("Tried to send message to nonexistent name server"),
             },
@@ -82,69 +87,82 @@ impl LocalOnlySP {
     }
 }
 
-fn immediately() -> SPFuture {
-    SPFuture::new(Box::new(future::finished(())))
-}
-
+#[async_trait]
 impl ServiceProvider for LocalOnlySP {
-    fn enum_sessions(
+    async fn enum_sessions(
         &mut self,
         controller: AppController,
         _id: u32,
         data: EnumSessionsData,
-    ) -> SPFuture {
-        // println!("[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}", data);
+    ) -> io::Result<()> {
+        log::trace!(
+            "[LocalOnlySP::enum_sessions] Got EnumSessions message: {:?}",
+            data
+        );
         self.server
             .lock()
-            .unwrap()
-            .enum_sessions(&data.message, controller);
-        immediately()
+            .await
+            .enum_sessions(&data.message, controller)
+            .await;
+        Ok(())
     }
 
-    fn open(&mut self, _controller: AppController, _id: u32, data: OpenData) -> SPFuture {
-        println!("[LocalOnlySP::open] Got Open message: {:?}", data);
-        immediately()
+    async fn open(
+        &mut self,
+        _controller: AppController,
+        _id: u32,
+        data: OpenData,
+    ) -> io::Result<()> {
+        log::trace!("[LocalOnlySP::open] Got Open message: {:?}", data);
+        Ok(())
     }
 
-    fn create_player(
+    async fn create_player(
         &mut self,
         controller: AppController,
         _id: u32,
         data: CreatePlayerData,
-    ) -> SPFuture {
-        println!(
+    ) -> io::Result<()> {
+        log::trace!(
             "[LocalOnlySP::create_player] Got CreatePlayer message: {:?}",
             data
         );
+        let mut server = self.server.lock().await;
         if data.flags & DPLAYI_PLAYER_NAMESRVR != 0 {
-            self.server
-                .lock()
-                .unwrap()
-                .set_name_server(data.player_guid, controller)
+            server.set_name_server(data.player_guid, controller);
         } else {
-            self.server
-                .lock()
-                .unwrap()
-                .create_player(data.player_guid, controller)
+            server.create_player(data.player_guid, controller);
         }
-        immediately()
+        Ok(())
     }
 
-    fn reply(&mut self, _controller: AppController, _id: u32, data: ReplyData) -> SPFuture {
-        // println!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
+    async fn reply(
+        &mut self,
+        _controller: AppController,
+        _id: u32,
+        data: ReplyData,
+    ) -> io::Result<()> {
+        // log::trace!("[LocalOnlySP::reply] Got Reply message: {:?}", data);
         self.server
             .lock()
-            .unwrap()
-            .reply(data.reply_to, &data.message);
-        immediately()
+            .await
+            .reply(data.reply_to, &data.message)
+            .await;
+        Ok(())
     }
 
-    fn send(&mut self, _controller: AppController, _id: u32, data: SendData) -> SPFuture {
-        // println!("[LocalOnlySP::send] Got Send message: {:?}", data);
+    async fn send(
+        &mut self,
+        _controller: AppController,
+        _id: u32,
+        data: SendData,
+    ) -> io::Result<()> {
+        // log::trace!("[LocalOnlySP::send] Got Send message: {:?}", data);
         self.server
             .lock()
-            .unwrap()
-            .send(data.receiver_id, &data.message);
-        immediately()
+            .await
+            .send(data.receiver_id, &data.message)
+            .await;
+        Ok(())
     }
 }

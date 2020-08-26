@@ -1,10 +1,11 @@
-use dprun::{structs, AppController, SPFuture, ServiceProvider};
-use futures::{future::poll_fn, future::FutureResult, prelude::*};
+use async_std::io::{self, Read, Write};
+use async_trait::async_trait;
+use dprun::{structs, AppController, ServiceProvider};
+use futures::future::BoxFuture;
 use libp2p::{
-    core::upgrade, core::UpgradeInfo, identity::Keypair, mdns::Mdns, InboundUpgrade, Multiaddr,
-    OutboundUpgrade, Swarm,
+    core::UpgradeInfo, identity::Keypair, mdns::Mdns, InboundUpgrade, Multiaddr, OutboundUpgrade,
+    Swarm,
 };
-use tokio::prelude::*;
 
 #[derive(Debug)]
 pub enum EnumSessionsError {
@@ -37,27 +38,27 @@ impl UpgradeInfo for EnumSessionsUpgrade {
 
 impl<C> InboundUpgrade<C> for EnumSessionsUpgrade
 where
-    C: AsyncRead + AsyncWrite,
+    C: Read + Write,
 {
     type Output = ();
     type Error = EnumSessionsError;
-    type Future = FutureResult<Self::Output, Self::Error>;
+    type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
-    fn upgrade_inbound(self, _i: upgrade::Negotiated<C>, _: Self::Info) -> Self::Future {
-        future::ok(())
+    fn upgrade_inbound(self, _socket: C, _: Self::Info) -> Self::Future {
+        Box::pin(async move { Ok(()) })
     }
 }
 
 impl<C> OutboundUpgrade<C> for EnumSessionsUpgrade
 where
-    C: AsyncRead + AsyncWrite,
+    C: Read + Write,
 {
     type Output = ();
     type Error = EnumSessionsError;
-    type Future = FutureResult<Self::Output, Self::Error>;
+    type Future = BoxFuture<'static, Result<Self::Output, Self::Error>>;
 
-    fn upgrade_outbound(self, _i: upgrade::Negotiated<C>, _: Self::Info) -> Self::Future {
-        future::ok(())
+    fn upgrade_outbound(self, _socket: C, _: Self::Info) -> Self::Future {
+        Box::pin(async move { Ok(()) })
     }
 }
 
@@ -89,21 +90,31 @@ impl Libp2pSP {
     // }
 }
 
+#[async_trait]
 impl ServiceProvider for Libp2pSP {
-    fn enum_sessions(
+    async fn enum_sessions(
         &mut self,
         _controller: AppController,
         _id: u32,
         data: structs::EnumSessionsData,
-    ) -> SPFuture {
-        dbg!(&data);
-        SPFuture::new(Box::new(future::finished(())))
+    ) -> io::Result<()> {
+        log::debug!("[libp2p] enum sessions");
+        log::debug!("{:?}", &data);
+        Ok(())
     }
 
-    fn open(&mut self, _controller: AppController, _id: u32, _data: structs::OpenData) -> SPFuture {
-        let transport = libp2p::build_development_transport(self.local_key.clone());
+    async fn open(
+        &mut self,
+        _controller: AppController,
+        _id: u32,
+        _data: structs::OpenData,
+    ) -> io::Result<()> {
+        log::debug!("Open libp2p session");
+        log::debug!("--- create transport ---");
+        let transport = libp2p::build_development_transport(self.local_key.clone())?;
         // how to make this work?
-        // .with_upgrade(EnumSessionsUpgrade);
+        // .upgrade(EnumSessionsUpgrade);
+        log::debug!("--- create swarm ---");
         let mut swarm = Swarm::new(
             transport,
             Mdns::new().unwrap(),
@@ -111,36 +122,47 @@ impl ServiceProvider for Libp2pSP {
         );
 
         let _addr = Swarm::listen_on(&mut swarm, "/ip4/0.0.0.0/tcp/0".parse().unwrap()).unwrap();
+        log::debug!("{:?}", _addr);
 
         if let Some(dial_addr) = &self.address {
             Swarm::dial_addr(&mut swarm, dial_addr.clone()).unwrap();
+            log::debug!("{:?}", dial_addr);
         }
 
-        SPFuture::new(Box::new(poll_fn(move || {
-            swarm.poll().expect("Error polling swarm");
-            Ok(Async::NotReady)
-        })))
+        async_std::task::spawn(async move {
+            loop {
+                let event = swarm.next_event().await;
+                log::debug!("{:?}", event);
+            }
+        });
+
+        Ok(())
     }
 
-    fn create_player(
+    async fn create_player(
         &mut self,
         _controller: AppController,
         _id: u32,
         _data: structs::CreatePlayerData,
-    ) -> SPFuture {
-        SPFuture::new(Box::new(future::finished(())))
+    ) -> io::Result<()> {
+        Ok(())
     }
 
-    fn reply(
+    async fn reply(
         &mut self,
         _controller: AppController,
         _id: u32,
         _data: structs::ReplyData,
-    ) -> SPFuture {
-        SPFuture::new(Box::new(future::finished(())))
+    ) -> io::Result<()> {
+        Ok(())
     }
 
-    fn send(&mut self, _controller: AppController, _id: u32, _data: structs::SendData) -> SPFuture {
-        SPFuture::new(Box::new(future::finished(())))
+    async fn send(
+        &mut self,
+        _controller: AppController,
+        _id: u32,
+        _data: structs::SendData,
+    ) -> io::Result<()> {
+        Ok(())
     }
 }
