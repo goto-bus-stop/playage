@@ -204,8 +204,8 @@ version = "0.1.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90f47c78ea98277cb1f5e6f60ba4fc762f5eafe9f6511bc2f7dfd8b75c225650"
 dependencies = [
- "async-io",
- "futures-lite",
+ "async-io 0.1.11",
+ "futures-lite 0.1.11",
  "multitask",
  "parking 1.0.6",
  "scoped-tls",
@@ -220,13 +220,34 @@ checksum = "3ae22a338d28c75b53702b66f77979062cb29675db376d99e451af4fa79dedb3"
 dependencies = [
  "cfg-if",
  "concurrent-queue",
- "futures-lite",
+ "futures-lite 0.1.11",
  "libc",
  "once_cell",
  "parking 2.0.0",
  "polling",
  "socket2",
  "vec-arena",
+ "wepoll-sys-stjepang",
+ "winapi 0.3.9",
+]
+
+[[package]]
+name = "async-io"
+version = "0.2.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "bb51ec8950b1b707d0104eb794fc0ec819c29988f0351bc092f3cb8135ba251d"
+dependencies = [
+ "cfg-if",
+ "concurrent-queue",
+ "fastrand",
+ "futures-lite 1.0.0",
+ "libc",
+ "once_cell",
+ "parking 2.0.0",
+ "polling",
+ "socket2",
+ "vec-arena",
+ "waker-fn",
  "wepoll-sys-stjepang",
  "winapi 0.3.9",
 ]
@@ -242,15 +263,15 @@ dependencies = [
 
 [[package]]
 name = "async-process"
-version = "0.1.2"
+version = "0.1.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5080effc8da83b88164c27c38528c67239465b3125f8c06782d23e220c18a110"
+checksum = "23d510baf319291a41e6c3363df4408a3b196ad18fcb1305ae4e500f2eabe260"
 dependencies = [
- "async-io",
- "blocking",
+ "async-io 0.2.3",
+ "blocking 0.6.0",
  "cfg-if",
  "event-listener",
- "futures-lite",
+ "futures-lite 1.0.0",
  "once_cell",
  "signal-hook",
  "winapi 0.3.9",
@@ -264,15 +285,15 @@ checksum = "46c8da367da62b8ff2313c406c9ac091c1b31d67a165becdd2de380d846260f7"
 dependencies = [
  "async-attributes",
  "async-executor",
- "async-io",
+ "async-io 0.1.11",
  "async-mutex",
  "async-task",
- "blocking",
+ "blocking 0.5.2",
  "crossbeam-utils",
  "futures-channel",
  "futures-core",
  "futures-io",
- "futures-lite",
+ "futures-lite 0.1.11",
  "futures-timer",
  "kv-log-macro",
  "log",
@@ -498,7 +519,20 @@ checksum = "ea5800d29218fea137b0880387e5948694a23c93fcdde157006966693a865c7c"
 dependencies = [
  "async-channel",
  "atomic-waker",
- "futures-lite",
+ "futures-lite 0.1.11",
+ "once_cell",
+ "waker-fn",
+]
+
+[[package]]
+name = "blocking"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0558bffc49dc51c6e8186de108e6ca880557d7f8e34ffdc794c7c8bbb13b4f78"
+dependencies = [
+ "async-channel",
+ "atomic-waker",
+ "futures-lite 1.0.0",
  "once_cell",
  "waker-fn",
 ]
@@ -994,6 +1028,21 @@ name = "futures-lite"
 version = "0.1.11"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "97999970129b808f0ccba93211201d431fcc12d7e1ffae03a61b5cedd1a7ced2"
+dependencies = [
+ "fastrand",
+ "futures-core",
+ "futures-io",
+ "memchr",
+ "parking 2.0.0",
+ "pin-project-lite",
+ "waker-fn",
+]
+
+[[package]]
+name = "futures-lite"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5dfd8ccee4974dccf68838bb2b9c90439238090061c82454af83866ac059eb9f"
 dependencies = [
  "fastrand",
  "futures-core",
