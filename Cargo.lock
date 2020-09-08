@@ -224,29 +224,30 @@ dependencies = [
  "libc",
  "once_cell",
  "parking 2.0.0",
- "polling",
+ "polling 0.1.5",
  "socket2",
- "vec-arena",
+ "vec-arena 0.5.2",
  "wepoll-sys-stjepang",
  "winapi 0.3.9",
 ]
 
 [[package]]
 name = "async-io"
-version = "0.2.3"
+version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bb51ec8950b1b707d0104eb794fc0ec819c29988f0351bc092f3cb8135ba251d"
+checksum = "016a7f0eda7091ef24ad8562d6503ad8da47af8c432d4d3fa440eea9e89055fe"
 dependencies = [
  "cfg-if",
  "concurrent-queue",
  "fastrand",
- "futures-lite 1.0.0",
+ "futures-lite 1.3.0",
  "libc",
+ "log",
  "once_cell",
  "parking 2.0.0",
- "polling",
+ "polling 1.0.1",
  "socket2",
- "vec-arena",
+ "vec-arena 1.0.0",
  "waker-fn",
  "wepoll-sys-stjepang",
  "winapi 0.3.9",
@@ -263,15 +264,15 @@ dependencies = [
 
 [[package]]
 name = "async-process"
-version = "0.1.3"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "23d510baf319291a41e6c3363df4408a3b196ad18fcb1305ae4e500f2eabe260"
+checksum = "0bb915df28b8309139bd9c9c700d84c20e5c21385d05378caa84912332d0f6a1"
 dependencies = [
- "async-io 0.2.3",
- "blocking 0.6.0",
+ "async-io 1.0.1",
+ "blocking 1.0.0",
  "cfg-if",
  "event-listener",
- "futures-lite 1.0.0",
+ "futures-lite 1.3.0",
  "once_cell",
  "signal-hook",
  "winapi 0.3.9",
@@ -526,13 +527,14 @@ dependencies = [
 
 [[package]]
 name = "blocking"
-version = "0.6.0"
+version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0558bffc49dc51c6e8186de108e6ca880557d7f8e34ffdc794c7c8bbb13b4f78"
+checksum = "2640778f8053e72c11f621b0a5175a0560a269282aa98ed85107773ab8e2a556"
 dependencies = [
  "async-channel",
  "atomic-waker",
- "futures-lite 1.0.0",
+ "fastrand",
+ "futures-lite 1.3.0",
  "once_cell",
  "waker-fn",
 ]
@@ -1040,9 +1042,9 @@ dependencies = [
 
 [[package]]
 name = "futures-lite"
-version = "1.0.0"
+version = "1.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "5dfd8ccee4974dccf68838bb2b9c90439238090061c82454af83866ac059eb9f"
+checksum = "4fc6854fcb40c6446abf6043e82604e42567dcf3d652a5ff4e997fc36876414c"
 dependencies = [
  "fastrand",
  "futures-core",
@@ -2184,6 +2186,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "polling"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0835fa5f9af34c170eb38638ae6bc88e1b11ecdd0b968c9d9de8e343450385eb"
+dependencies = [
+ "cfg-if",
+ "libc",
+ "log",
+ "wepoll-sys-stjepang",
+ "winapi 0.3.9",
+]
+
+[[package]]
 name = "poly1305"
 version = "0.6.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3097,6 +3112,12 @@ name = "vec-arena"
 version = "0.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8cb18268690309760d59ee1a9b21132c126ba384f374c59a94db4bc03adeb561"
+
+[[package]]
+name = "vec-arena"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "eafc1b9b2dfc6f5529177b62cf806484db55b32dc7c9658a118e11bbeb33061d"
 
 [[package]]
 name = "vec_map"
