@@ -9,5 +9,5 @@ async-std = "1.6.3"
 async-trait = "0.1.40"
 dprun = { path = "../dprun" }
 futures = "0.3.5"
-libp2p = "0.24.0"
+libp2p = "0.28.1"
 log = "0.4.11"
