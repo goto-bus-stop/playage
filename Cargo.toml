@@ -14,7 +14,7 @@ dprun = { path = "crates/dprun" }
 dpsp-libp2p = { path = "crates/dpsp-libp2p" }
 dpsp-local-only = { path = "crates/dpsp-local-only" }
 femme = "2.1.1"
-futures = "0.3.5"
+futures = "0.3.6"
 log = "0.4.11"
 structopt = "0.3.18"
 uuid = { version = "0.8", features = ["v4"] }
