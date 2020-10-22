@@ -94,6 +94,7 @@ impl SpectateHeader {
     }
 }
 
+/// Wrapper for a byte stream from a UserPatch spectator server.
 pub struct SpectateStream {
     header: SpectateHeader,
     source: AnyStream,

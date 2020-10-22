@@ -34,6 +34,7 @@ pub enum IndexType {
 }
 
 impl IndexType {
+    #[allow(dead_code)]
     fn to_ffi(self) -> ffi::WKIndexType {
         match self {
             IndexType::IndexOnly => ffi::WKIndexType_DRSIndexOnly,
@@ -364,7 +365,8 @@ impl Converter {
         let res = unsafe { ffi::wkconverter_run(self.ptr) };
 
         if res != 0 {
-            let err = self.context.last_error.take().unwrap_or("unk".to_string());
+            let err = self.context.last_error.take()
+                .unwrap_or_else(|| "Unknown error".to_string());
             Err(err)
         } else {
             Ok(())
