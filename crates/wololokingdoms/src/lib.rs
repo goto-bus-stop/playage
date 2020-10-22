@@ -365,7 +365,10 @@ impl Converter {
         let res = unsafe { ffi::wkconverter_run(self.ptr) };
 
         if res != 0 {
-            let err = self.context.last_error.take()
+            let err = self
+                .context
+                .last_error
+                .take()
                 .unwrap_or_else(|| "Unknown error".to_string());
             Err(err)
         } else {
