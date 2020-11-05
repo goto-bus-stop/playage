@@ -5,7 +5,7 @@ authors = ["Renée Kooi <renee@kooi.me>"]
 edition = "2018"
 
 [dependencies]
-async-std = "1.6.4"
+async-std = "1.7.0"
 async-trait = "0.1.41"
 dprun = { path = "../dprun" }
 futures = "0.3.7"

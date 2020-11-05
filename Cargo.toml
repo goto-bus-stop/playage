@@ -8,7 +8,7 @@ edition = "2018"
 anyhow = "1.0.34"
 aoc-spectate = { path = "crates/aoc-spectate" }
 aoc-userpatch = { path = "crates/aoc-userpatch" }
-async-std = { version = "1.6", features = ["attributes", "unstable"] }
+async-std = { version = "1.7", features = ["attributes", "unstable"] }
 byteorder = "1.3.4"
 dprun = { path = "crates/dprun" }
 dpsp-libp2p = { path = "crates/dpsp-libp2p" }
