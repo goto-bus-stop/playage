@@ -8,6 +8,6 @@ edition = "2018"
 async-std = "1.7.0"
 async-trait = "0.1.41"
 dprun = { path = "../dprun" }
-futures = "0.3.7"
+futures = "0.3.8"
 libp2p = "0.29.1"
 log = "0.4.11"
