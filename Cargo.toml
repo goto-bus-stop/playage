@@ -5,7 +5,7 @@ authors = ["Renée Kooi <renee@kooi.me>"]
 edition = "2018"
 
 [dependencies]
-anyhow = "1.0.36"
+anyhow = "1.0.37"
 aoc-spectate = { path = "crates/aoc-spectate" }
 aoc-userpatch = { path = "crates/aoc-userpatch" }
 async-std = { version = "1.7", features = ["attributes", "unstable"] }
