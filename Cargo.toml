@@ -9,7 +9,7 @@ anyhow = "1.0.36"
 aoc-spectate = { path = "crates/aoc-spectate" }
 aoc-userpatch = { path = "crates/aoc-userpatch" }
 async-std = { version = "1.7", features = ["attributes", "unstable"] }
-byteorder = "1.3.4"
+byteorder = "1.4.2"
 dprun = { path = "crates/dprun" }
 dpsp-libp2p = { path = "crates/dpsp-libp2p" }
 dpsp-local-only = { path = "crates/dpsp-local-only" }
