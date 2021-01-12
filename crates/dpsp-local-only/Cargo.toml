@@ -9,4 +9,4 @@ async-std = "1.8.0"
 async-trait = "0.1.42"
 dprun = { path = "../dprun" }
 futures = "0.3.8"
-log = "0.4.11"
+log = "0.4.13"

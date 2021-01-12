@@ -12,5 +12,5 @@ byteorder = "1.4.2"
 futures = "0.3.8"
 futures_codec = "0.4.1"
 lazy_static = "1.4"
-log = "0.4.11"
+log = "0.4.13"
 uuid = { version = "0.8", default-features = false }
