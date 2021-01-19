@@ -1,7 +1,8 @@
 use crate::{inspect::print_network_message, structs::*};
 use async_std::io;
 use async_std::net::{IpAddr, Ipv4Addr, SocketAddr, TcpListener, TcpStream};
-use async_std::sync::{channel, Arc, Mutex, Receiver, Sender};
+use async_std::sync::{Arc, Mutex};
+use async_std::channel::{self, Receiver, Sender};
 use async_trait::async_trait;
 use futures::sink::SinkExt;
 use futures::stream::StreamExt;
@@ -58,7 +59,7 @@ impl ServerController {
     pub fn create() -> (Self, Receiver<ControlMessage>) {
         // TODO figure out appropriate buffer size
         // May only need to be oneshot
-        let (sender, receiver) = channel(5);
+        let (sender, receiver) = channel::bounded(5);
         let controller = ServerController { sender };
 
         (controller, receiver)
@@ -82,7 +83,7 @@ pub struct AppController {
 impl AppController {
     pub fn create() -> (Self, Receiver<AppMessage>) {
         // TODO figure out appropriate buffer size
-        let (sender, receiver) = channel(5);
+        let (sender, receiver) = channel::bounded(5);
         let controller = AppController {
             sender,
             next_message_id: 0,
